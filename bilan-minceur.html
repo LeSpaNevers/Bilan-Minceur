@@ -261,7 +261,12 @@ function renderInfos(c) {
       <div class="field"><label>Âge des enfants</label><input id="f_age_enfants" value="${cl.age_enfants||''}"></div>
       <div class="field full"><label>Comment nous avez-vous connu ?</label><input id="f_connu" value="${cl.comment_connu||''}"></div>
     </div>
-    <button class="save-btn" onclick="saveInfos()">💾 Enregistrer</button>`;
+    <button class="save-btn" onclick="saveInfos()">💾 Enregistrer</button>
+    <p class="section-label" style="margin-top:1.5rem">Photos du client</p>
+    <div class="photos-grid" id="photogrid-client-${cl.id}">
+      <div class="photo-add" onclick="triggerClientPhotoUpload('${cl.id}')">+</div>
+    </div>`;
+  loadClientPhotos(cl.id);
 }
 
 async function saveInfos() {
@@ -564,19 +569,45 @@ function toggleRdv(id) {
   if (!isOpen) { el.classList.add('open'); loadPhotos(id.replace('rdvb-','')); }
 }
 
-function triggerPhotoUpload(rdvId) { currentRdvId = rdvId; document.getElementById('photoInput').click(); }
+function triggerClientPhotoUpload(clientId) {
+  currentRdvId = null;
+  document.getElementById('photoInput').click();
+  document.getElementById('photoInput').dataset.mode = 'client';
+  document.getElementById('photoInput').dataset.clientId = clientId;
+}
+
+async function loadClientPhotos(clientId) {
+  const { data } = await sb.from('photos').select('*').eq('client_id', clientId).is('rdv_id', null);
+  const grid = document.getElementById('photogrid-client-'+clientId);
+  if (!grid) return;
+  const existing = (data||[]).map(p => `<img src="${p.url}" class="photo-thumb" alt="Photo" onclick="openLightbox('${p.url}')">`).join('');
+  grid.innerHTML = existing + `<div class="photo-add" onclick="triggerClientPhotoUpload('${clientId}')">+</div>`;
+}
+
+function triggerPhotoUpload(rdvId) {
+  currentRdvId = rdvId;
+  document.getElementById('photoInput').dataset.mode = 'rdv';
+  document.getElementById('photoInput').click();
+}
 
 async function handlePhotoUpload(event) {
   const files = Array.from(event.target.files);
+  const mode = event.target.dataset.mode;
+  const clientId = event.target.dataset.clientId || currentClient.id;
   for (const file of files) {
-    const path = `${currentClient.id}/${currentRdvId}/${Date.now()}_${file.name}`;
+    const path = `${clientId}/${mode==='rdv'?currentRdvId:'general'}/${Date.now()}_${file.name}`;
     const { error } = await sb.storage.from('photos-clients').upload(path, file, {upsert:true});
     if (!error) {
       const { data: urlData } = sb.storage.from('photos-clients').getPublicUrl(path);
-      await sb.from('photos').insert({ client_id: currentClient.id, rdv_id: currentRdvId, url: urlData.publicUrl });
+      await sb.from('photos').insert({
+        client_id: clientId,
+        rdv_id: mode==='rdv' ? currentRdvId : null,
+        url: urlData.publicUrl
+      });
     }
   }
-  loadPhotos(currentRdvId);
+  if (mode==='rdv') loadPhotos(currentRdvId);
+  else loadClientPhotos(clientId);
   event.target.value = '';
   showToast('Photos ajoutées ✓');
 }
