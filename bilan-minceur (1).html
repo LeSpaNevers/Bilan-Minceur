@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bilan Minceur — Gestion Clients</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --rose: #C2496A; --rose-light: #fdf0f3; --rose-mid: #f0c0cc;
+  --rose-dark: #8a2f48; --rose-pale: #fdf7f8;
+  --text: #2a1f23; --text-muted: #8a7a7e; --border: #e8dde0;
+  --bg: #faf6f7; --white: #ffffff; --radius: 10px; --radius-lg: 14px;
+}
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+.app { display: flex; height: 100vh; }
+.sidebar { width: 270px; min-width: 270px; background: var(--white); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100vh; }
+.sidebar-logo { padding: 1.5rem 1.25rem 1rem; border-bottom: 1px solid var(--border); }
+.sidebar-logo h1 { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 500; color: var(--rose); letter-spacing: 0.02em; }
+.sidebar-logo p { font-size: 11px; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.05em; text-transform: uppercase; }
+.search-wrap { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+.search-wrap input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; background: var(--rose-pale); color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+.search-wrap input:focus { border-color: var(--rose-mid); }
+.search-wrap input::placeholder { color: var(--text-muted); }
+.client-list { flex: 1; overflow-y: auto; padding: 0.5rem 0; }
+.client-list::-webkit-scrollbar { width: 4px; }
+.client-list::-webkit-scrollbar-thumb { background: var(--rose-mid); border-radius: 2px; }
+.client-item { padding: 0.65rem 1.25rem; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; transition: background 0.15s; }
+.client-item:hover { background: var(--rose-pale); }
+.client-item.active { background: var(--rose-light); border-left-color: var(--rose); }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--rose-mid); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: var(--rose-dark); flex-shrink: 0; }
+.client-item.active .avatar { background: var(--rose); color: white; }
+.client-name { font-size: 13px; font-weight: 500; line-height: 1.3; }
+.client-sub { font-size: 11px; color: var(--text-muted); }
+.new-btn { margin: 0.75rem 1rem; padding: 9px; border: 1.5px dashed var(--rose-mid); border-radius: var(--radius); background: transparent; color: var(--rose); font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s; }
+.new-btn:hover { background: var(--rose-light); }
+.main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+.main::-webkit-scrollbar { width: 4px; }
+.main::-webkit-scrollbar-thumb { background: var(--rose-mid); border-radius: 2px; }
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; color: var(--text-muted); }
+.empty-state p { font-size: 14px; } .empty-state span { font-size: 12px; }
+.client-header { padding: 1.25rem 1.75rem; background: var(--white); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+.avatar-lg { width: 48px; height: 48px; border-radius: 50%; background: var(--rose); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 500; color: white; }
+.client-header h2 { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 500; }
+.client-header p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); padding: 0 1.75rem; overflow-x: auto; }
+.tab { padding: 0.85rem 1rem; font-size: 13px; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: flex; align-items: center; gap: 6px; transition: color 0.15s; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--rose); border-bottom-color: var(--rose); font-weight: 500; }
+.tab-content { padding: 1.75rem; flex: 1; }
+.section-label { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.75rem; margin-top: 1.5rem; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.section-label:first-child { margin-top: 0; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+.form-grid.four { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field.full { grid-column: 1 / -1; }
+.field label { font-size: 12px; color: var(--text-muted); }
+.field input, .field select, .field textarea { padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; background: var(--white); color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--rose-mid); }
+.field textarea { resize: vertical; min-height: 72px; }
+.radio-group { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+.radio-group label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--text); }
+.radio-group input[type=radio], .radio-group input[type=checkbox] { accent-color: var(--rose); width: 15px; height: 15px; }
+.oui-non { display: flex; gap: 16px; margin-top: 4px; }
+.oui-non label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.oui-non input { accent-color: var(--rose); width: 15px; height: 15px; }
+.save-btn { margin-top: 1.25rem; padding: 10px 22px; background: var(--rose); color: white; border: none; border-radius: var(--radius); font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.15s; }
+.save-btn:hover { background: var(--rose-dark); }
+.rdv-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.add-rdv-btn { padding: 8px 16px; border: 1px solid var(--rose); border-radius: var(--radius); background: transparent; color: var(--rose); font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.15s; }
+.add-rdv-btn:hover { background: var(--rose-light); }
+.rdv-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 10px; }
+.rdv-toggle { padding: 0.9rem 1.1rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.15s; }
+.rdv-toggle:hover { background: var(--rose-pale); }
+.rdv-toggle-left { display: flex; align-items: center; gap: 10px; }
+.rdv-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rose-mid); }
+.rdv-date-str { font-size: 14px; font-weight: 500; }
+.rdv-prat { font-size: 12px; color: var(--text-muted); }
+.rdv-body { display: none; padding: 1rem 1.1rem; border-top: 1px solid var(--border); }
+.rdv-body.open { display: block; }
+.mesures-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 1rem; }
+.mesure-box { background: var(--rose-pale); border-radius: var(--radius); padding: 8px 10px; }
+.mesure-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.mesure-val { font-size: 16px; font-weight: 300; color: var(--text); }
+.mesure-unit { font-size: 11px; color: var(--text-muted); }
+.info-block { margin-bottom: 10px; }
+.info-block-label { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+.info-block-val { font-size: 13px; color: var(--text); line-height: 1.5; }
+.photos-section { margin-top: 0.75rem; }
+.photos-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.photo-thumb { width: 76px; height: 76px; border-radius: var(--radius); object-fit: cover; border: 1px solid var(--border); cursor: pointer; }
+.photo-add { width: 76px; height: 76px; border-radius: var(--radius); border: 1.5px dashed var(--rose-mid); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--rose); font-size: 22px; transition: background 0.15s; }
+.photo-add:hover { background: var(--rose-light); }
+.notes-wrap { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem; }
+.notes-wrap textarea { width: 100%; border: none; background: transparent; resize: none; font-size: 13px; color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 160px; outline: none; line-height: 1.7; }
+.overlay { position: fixed; inset: 0; background: rgba(42,31,35,0.4); display: flex; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(2px); }
+.modal { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border); width: 640px; max-width: 96vw; max-height: 90vh; overflow-y: auto; }
+.modal-head { padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--white); z-index: 10; }
+.modal-head h3 { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 500; }
+.modal-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 22px; line-height: 1; }
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 1.25rem 1.4rem; }
+.modal-foot { padding: 1rem 1.4rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; position: sticky; bottom: 0; background: var(--white); }
+.btn-cancel { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; color: var(--text-muted); }
+.btn-cancel:hover { background: var(--bg); }
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--rose); color: white; padding: 10px 18px; border-radius: var(--radius); font-size: 13px; z-index: 999; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+.empty-rdv { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 13px; }
+input[type="file"] { display: none; }
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 300; cursor: zoom-out; }
+.lightbox img { max-width: 90vw; max-height: 90vh; border-radius: var(--radius); }
+.suivi-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 0.75rem; }
+.suivi-table th { background: var(--rose-pale); padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid var(--border); }
+.suivi-table td { padding: 8px 10px; border: 1px solid var(--border); vertical-align: top; }
+.suivi-table td input { width: 100%; border: none; background: transparent; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; }
+.suivi-table tr:first-child td { font-weight: 500; background: var(--rose-light); }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h1>✦ Bilan Minceur</h1>
+      <p>Gestion des fiches clients</p>
+    </div>
+    <div class="search-wrap">
+      <input type="text" placeholder="Rechercher un client..." id="searchInput" oninput="filterClients()">
+    </div>
+    <div class="client-list" id="clientList">
+      <p style="padding:1rem;font-size:12px;color:var(--text-muted)">Chargement...</p>
+    </div>
+    <button class="new-btn" onclick="openNewClientModal()">+ Nouveau client</button>
+  </div>
+  <div class="main" id="main">
+    <div class="empty-state" id="emptyState">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#C2496A" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <p>Sélectionnez un client</p>
+      <span>ou créez une nouvelle fiche</span>
+    </div>
+    <div id="clientView" style="display:none;flex-direction:column;flex:1;"></div>
+  </div>
+</div>
+<div id="modalContainer"></div>
+<input type="file" id="photoInput" accept="image/*" multiple onchange="handlePhotoUpload(event)">
+
+<script>
+const SUPABASE_URL = 'https://ltklzscktwddipmvplkx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_vsUUXQpJRitg6Pa-y47qXg_CaX-h0K8';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let clients = [], currentClient = null, currentTab = 'infos', currentRdvId = null;
+
+async function loadClients() {
+  const { data, error } = await sb.from('clients').select('*').order('nom');
+  if (error) { console.error(error); return; }
+  clients = data || [];
+  renderClientList(clients);
+}
+
+function initials(nom, prenom) { return ((prenom||'?')[0] + (nom||'?')[0]).toUpperCase(); }
+
+function renderClientList(list) {
+  const el = document.getElementById('clientList');
+  if (!list.length) { el.innerHTML = '<p style="padding:1rem;font-size:12px;color:var(--text-muted)">Aucun client trouvé</p>'; return; }
+  el.innerHTML = list.map(c => `
+    <div class="client-item ${currentClient?.id===c.id?'active':''}" onclick="selectClient('${c.id}')">
+      <div class="avatar">${initials(c.nom,c.prenom)}</div>
+      <div><div class="client-name">${c.prenom} ${c.nom}</div><div class="client-sub">${c.telephone||c.email||'—'}</div></div>
+    </div>`).join('');
+}
+
+function filterClients() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  renderClientList(clients.filter(c => `${c.nom} ${c.prenom}`.toLowerCase().includes(q)));
+}
+
+async function selectClient(id) {
+  currentClient = clients.find(c => c.id === id);
+  renderClientList(clients);
+  document.getElementById('emptyState').style.display = 'none';
+  const cv = document.getElementById('clientView');
+  cv.style.display = 'flex';
+  cv.innerHTML = `
+    <div class="client-header">
+      <div class="avatar-lg">${initials(currentClient.nom,currentClient.prenom)}</div>
+      <div style="flex:1">
+        <h2>${currentClient.prenom} ${currentClient.nom}</h2>
+        <p>${[currentClient.telephone,currentClient.email].filter(Boolean).join(' · ')||'—'}</p>
+      </div>
+      <button onclick="confirmDeleteClient()" style="padding:7px 14px;border:1px solid #e8dde0;border-radius:10px;background:transparent;color:#8a7a7e;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:5px;" onmouseover="this.style.background='#fff0f3';this.style.color='#C2496A';this.style.borderColor='#f0c0cc'" onmouseout="this.style.background='transparent';this.style.color='#8a7a7e';this.style.borderColor='#e8dde0'">🗑 Supprimer ce client</button>
+    </div>
+    <div class="tabs">
+      <div class="tab ${currentTab==='infos'?'active':''}" onclick="switchTab('infos',this)">👤 Infos</div>
+      <div class="tab ${currentTab==='besoins'?'active':''}" onclick="switchTab('besoins',this)">💬 Besoins</div>
+      <div class="tab ${currentTab==='alim'?'active':''}" onclick="switchTab('alim',this)">🥗 Alimentation</div>
+      <div class="tab ${currentTab==='sante'?'active':''}" onclick="switchTab('sante',this)">🩺 Santé</div>
+      <div class="tab ${currentTab==='rdv'?'active':''}" onclick="switchTab('rdv',this)">📅 Rendez-vous</div>
+      <div class="tab ${currentTab==='suivi'?'active':''}" onclick="switchTab('suivi',this)">📊 Suivi</div>
+      <div class="tab ${currentTab==='notes'?'active':''}" onclick="switchTab('notes',this)">📝 Notes</div>
+    </div>
+    <div class="tab-content" id="tabContent"></div>`;
+  renderTab();
+}
+
+function switchTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderTab();
+}
+
+async function renderTab() {
+  const c = document.getElementById('tabContent');
+  if (!c) return;
+  if (currentTab==='infos') renderInfos(c);
+  else if (currentTab==='besoins') renderBesoins(c);
+  else if (currentTab==='alim') renderAlim(c);
+  else if (currentTab==='sante') renderSante(c);
+  else if (currentTab==='rdv') await renderRdv(c);
+  else if (currentTab==='suivi') await renderSuivi(c);
+  else if (currentTab==='notes') renderNotes(c);
+}
+
+function v(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function sv(id, val) { const el = document.getElementById(id); if (el) el.value = val||''; }
+function rb(name, val) {
+  const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
+  if (el) el.checked = true;
+}
+function grb(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : '';
+}
+function cb(id, val) { const el = document.getElementById(id); if (el) el.checked = !!val; }
+function gcb(id) { const el = document.getElementById(id); return el ? el.checked : false; }
+
+// ---- ONGLET INFOS ----
+function renderInfos(c) {
+  const cl = currentClient;
+  c.innerHTML = `
+    <p class="section-label">Informations personnelles</p>
+    <div class="form-grid">
+      <div class="field"><label>Prénom</label><input id="f_prenom" value="${cl.prenom||''}"></div>
+      <div class="field"><label>Nom</label><input id="f_nom" value="${cl.nom||''}"></div>
+      <div class="field"><label>Date de naissance</label><input type="date" id="f_dob" value="${cl.date_naissance||''}"></div>
+      <div class="field"><label>Téléphone</label><input id="f_tel" value="${cl.telephone||''}"></div>
+      <div class="field full"><label>Email</label><input id="f_email" value="${cl.email||''}"></div>
+      <div class="field full"><label>Adresse</label><input id="f_adresse" value="${cl.adresse||''}"></div>
+      <div class="field"><label>Code postal</label><input id="f_cp" value="${cl.code_postal||''}"></div>
+      <div class="field"><label>Ville</label><input id="f_ville" value="${cl.ville||''}"></div>
+      <div class="field"><label>Profession</label><input id="f_profession" value="${cl.profession||''}"></div>
+      <div class="field"><label>Situation familiale</label><input id="f_situation" value="${cl.situation_familiale||''}"></div>
+      <div class="field"><label>Nombre d'enfants</label><input type="number" id="f_nb_enfants" value="${cl.nb_enfants||''}"></div>
+      <div class="field"><label>Âge des enfants</label><input id="f_age_enfants" value="${cl.age_enfants||''}"></div>
+      <div class="field full"><label>Comment nous avez-vous connu ?</label><input id="f_connu" value="${cl.comment_connu||''}"></div>
+    </div>
+    <button class="save-btn" onclick="saveInfos()">💾 Enregistrer</button>
+    <p class="section-label" style="margin-top:1.5rem">Photos du client</p>
+    <div class="photos-grid" id="photogrid-client-${cl.id}">
+      <div class="photo-add" onclick="triggerClientPhotoUpload('${cl.id}')">+</div>
+    </div>`;
+  loadClientPhotos(cl.id);
+}
+
+async function saveInfos() {
+  const updates = {
+    prenom: v('f_prenom'), nom: v('f_nom'),
+    date_naissance: v('f_dob')||null,
+    telephone: v('f_tel'), email: v('f_email'),
+    adresse: v('f_adresse'), code_postal: v('f_cp'), ville: v('f_ville'),
+    profession: v('f_profession'), situation_familiale: v('f_situation'),
+    nb_enfants: v('f_nb_enfants')||null, age_enfants: v('f_age_enfants'),
+    comment_connu: v('f_connu'),
+  };
+  const { error } = await sb.from('clients').update(updates).eq('id', currentClient.id);
+  if (!error) { Object.assign(currentClient, updates); await loadClients(); showToast('Fiche enregistrée ✓'); }
+  else alert('Erreur : ' + error.message);
+}
+
+// ---- ONGLET BESOINS ----
+function renderBesoins(c) {
+  const cl = currentClient;
+  c.innerHTML = `
+    <p class="section-label">Vos besoins</p>
+    <div class="form-grid">
+      <div class="field full"><label>Qu'est-ce qui a déclenché votre prise de rdv pour ce bilan ?</label><textarea id="f_declencheur">${cl.declencheur||''}</textarea></div>
+      <div class="field full"><label>Quels résultats attendez-vous de ce programme Minceur ?</label><textarea id="f_resultats_attendus">${cl.resultats_attendus||''}</textarea></div>
+      <div class="field full"><label>Depuis combien de temps constatez-vous ce problème ?</label><textarea id="f_duree_probleme">${cl.duree_probleme||''}</textarea></div>
+      <div class="field full"><label>Y a-t-il un facteur particulier qui ait déclenché ce problème ?</label><textarea id="f_facteur_declencheur">${cl.facteur_declencheur||''}</textarea></div>
+      <div class="field full"><label>Que faites-vous à la maison pour contrer ce problème ? (produits, sport, nourriture)</label><textarea id="f_actions_maison">${cl.actions_maison||''}</textarea></div>
+      <div class="field full"><label>Selon vous, qu'est-ce qui fait que vous n'arrivez pas à y remédier seul ?</label><textarea id="f_blocage">${cl.blocage||''}</textarea></div>
+      <div class="field full"><label>Comment ressentez-vous votre peau ? (confortable, rugueuse, souple, relâchée...)</label><textarea id="f_ressenti_peau">${cl.ressenti_peau||''}</textarea></div>
+      <div class="field full"><label>Quelles sont les zones qui vous préoccupent particulièrement ?</label><textarea id="f_zones_preoccupantes">${cl.zones_preoccupantes||''}</textarea></div>
+      <div class="field full"><label>Avez-vous déjà essayé d'y remédier ? Comment ? Quels ont été les résultats ?</label><textarea id="f_tentatives_precedentes">${cl.tentatives_precedentes||''}</textarea></div>
+    </div>
+    <p class="section-label">Vos attentes</p>
+    <div class="form-grid">
+      <div class="field full">
+        <label>Souhaitez-vous un amincissement :</label>
+        <div class="radio-group">
+          <label><input type="radio" name="type_amincissement" value="Ciblé haut du corps"> Ciblé haut du corps (ventre / bras / dos)</label>
+          <label><input type="radio" name="type_amincissement" value="Ciblé bas du corps"> Ciblé bas du corps (ventre / cuisse / fesse)</label>
+          <label><input type="radio" name="type_amincissement" value="Global"> Global</label>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Souhaitez-vous raffermir et/ou tonifier votre silhouette ?</label>
+        <div class="radio-group">
+          <label><input type="checkbox" id="raff_raffermir"> Raffermir votre silhouette</label>
+          <label><input type="checkbox" id="raff_tonifier"> Tonifier votre silhouette</label>
+        </div>
+      </div>
+      <div class="field full"><label>Si oui, quelles zones ?</label><textarea id="f_raffermissement">${cl.raffermissement||''}</textarea></div>
+      <div class="field"><label>Taille de vêtement actuelle — Pantalon</label><input id="f_taille_pant" value="${cl.taille_pantalon||''}"></div>
+      <div class="field"><label>Taille de vêtement actuelle — Jupe</label><input id="f_taille_jupe" value="${cl.taille_jupe||''}"></div>
+      <div class="field"><label>Taille de vêtement actuelle — Robe</label><input id="f_taille_robe" value="${cl.taille_robe||''}"></div>
+      <div class="field"><label>Taille de vêtement souhaitée</label><input id="f_taille_souhaitee" value="${cl.taille_souhaitee||''}"></div>
+    </div>
+    <button class="save-btn" onclick="saveBesoins()">💾 Enregistrer</button>`;
+  rb('type_amincissement', cl.type_amincissement||'');
+  if (cl.souhait_silhouette) {
+    if (cl.souhait_silhouette.includes('Raffermir')) { const el = document.getElementById('raff_raffermir'); if(el) el.checked = true; }
+    if (cl.souhait_silhouette.includes('Tonifier')) { const el = document.getElementById('raff_tonifier'); if(el) el.checked = true; }
+  }
+}
+
+async function saveBesoins() {
+  const souhaitSilhouette = [];
+  if (document.getElementById('raff_raffermir')?.checked) souhaitSilhouette.push('Raffermir');
+  if (document.getElementById('raff_tonifier')?.checked) souhaitSilhouette.push('Tonifier');
+  const updates = {
+    declencheur: v('f_declencheur'), resultats_attendus: v('f_resultats_attendus'),
+    duree_probleme: v('f_duree_probleme'), facteur_declencheur: v('f_facteur_declencheur'),
+    actions_maison: v('f_actions_maison'), blocage: v('f_blocage'),
+    ressenti_peau: v('f_ressenti_peau'), zones_preoccupantes: v('f_zones_preoccupantes'),
+    tentatives_precedentes: v('f_tentatives_precedentes'),
+    type_amincissement: grb('type_amincissement'),
+    souhait_silhouette: souhaitSilhouette.join(', '),
+    raffermissement: v('f_raffermissement'),
+    taille_pantalon: v('f_taille_pant'), taille_jupe: v('f_taille_jupe'),
+    taille_robe: v('f_taille_robe'), taille_souhaitee: v('f_taille_souhaitee'),
+  };
+  const { error } = await sb.from('clients').update(updates).eq('id', currentClient.id);
+  if (!error) { Object.assign(currentClient, updates); showToast('Enregistré ✓'); }
+  else alert('Erreur : ' + error.message);
+}
+
+// ---- ONGLET ALIMENTATION ----
+function renderAlim(c) {
+  const cl = currentClient;
+  c.innerHTML = `
+    <p class="section-label">Comportement alimentaire</p>
+    <div class="form-grid">
+      <div class="field full">
+        <label>Pratiquez-vous une activité physique et sportive ?</label>
+        <div class="oui-non">
+          <label><input type="radio" name="sport_oui" value="Oui"> Oui</label>
+          <label><input type="radio" name="sport_oui" value="Non"> Non</label>
+        </div>
+      </div>
+      <div class="field"><label>Si oui, laquelle ?</label><input id="f_sport_type" value="${cl.sport_type||''}"></div>
+      <div class="field">
+        <label>Fréquence</label>
+        <div class="radio-group">
+          <label><input type="radio" name="sport_freq" value="1 à 2 fois/semaine"> 1 à 2 fois/semaine</label>
+          <label><input type="radio" name="sport_freq" value="Tous les jours"> Tous les jours</label>
+          <label><input type="radio" name="sport_freq" value="De temps en temps"> De temps en temps</label>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Suivez-vous un régime alimentaire particulier ?</label>
+        <div class="oui-non">
+          <label><input type="radio" name="regime_oui" value="Oui"> Oui</label>
+          <label><input type="radio" name="regime_oui" value="Non"> Non</label>
+        </div>
+      </div>
+      <div class="field full"><label>Si oui, lequel ?</label><input id="f_regime_type" value="${cl.regime_type||''}"></div>
+      <div class="field full">
+        <label>Consommez-vous au moins 1,5L d'eau par jour ?</label>
+        <div class="oui-non">
+          <label><input type="radio" name="eau" value="Oui"> Oui</label>
+          <label><input type="radio" name="eau" value="Non"> Non</label>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Grignotez-vous souvent entre les repas ?</label>
+        <div class="oui-non">
+          <label><input type="radio" name="grignotage" value="Oui"> Oui</label>
+          <label><input type="radio" name="grignotage" value="Non"> Non</label>
+        </div>
+      </div>
+      <div class="field"><label>À quelle(s) heure(s) ?</label><input id="f_grignotage_heure" value="${cl.grignotage_heure||''}"></div>
+      <div class="field full">
+        <label>Avez-vous un appétit excessif pendant les repas ?</label>
+        <div class="oui-non">
+          <label><input type="radio" name="appetit" value="Oui"> Oui</label>
+          <label><input type="radio" name="appetit" value="Non"> Non</label>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Êtes-vous attiré(e) par les aliments (plusieurs choix possibles) :</label>
+        <div class="radio-group">
+          <label><input type="checkbox" id="attr_sucres"> Sucrés</label>
+          <label><input type="checkbox" id="attr_sales"> Salés</label>
+        </div>
+      </div>
+      <div class="field full"><label>Quelques exemples d'aliments appréciés</label><input id="f_exemples_aliments" value="${cl.exemples_aliments||''}"></div>
+      <div class="field full"><label>Quelles sont vos habitudes d'hygiène de vie ?</label><textarea id="f_hygiene_vie">${cl.hygiene_vie||''}</textarea></div>
+    </div>
+    <p class="section-label">Le poids</p>
+    <div class="form-grid">
+      <div class="field full">
+        <label>Par rapport à votre poids de forme, avez-vous pris du poids ?</label>
+        <div class="oui-non">
+          <label><input type="radio" name="prise_poids" value="Oui"> Oui</label>
+          <label><input type="radio" name="prise_poids" value="Non"> Non</label>
+        </div>
+      </div>
+      <div class="field"><label>Si oui, combien de kilos ?</label><input type="number" id="f_kilos_pris" value="${cl.kilos_pris||''}"></div>
+      <div class="field"><label>Depuis quand ?</label><input id="f_depuis_quand" value="${cl.depuis_quand||''}"></div>
+      <div class="field"><label>Poids actuel (kg)</label><input type="number" step="0.1" id="f_poids_actuel" value="${cl.poids_actuel||''}"></div>
+      <div class="field"><label>Poids souhaité (kg)</label><input type="number" step="0.1" id="f_poids_souhaite" value="${cl.poids_souhaite||''}"></div>
+      <div class="field"><label>Taille (m)</label><input type="number" step="0.01" id="f_taille_m" value="${cl.taille_m||''}"></div>
+      <div class="field"><label>IMC actuel</label><input type="number" step="0.1" id="f_imc_actuel" value="${cl.imc_actuel||''}"></div>
+      <div class="field"><label>IMC souhaité</label><input type="number" step="0.1" id="f_imc_souhaite" value="${cl.imc_souhaite||''}"></div>
+    </div>
+    <button class="save-btn" onclick="saveAlim()">💾 Enregistrer</button>`;
+  rb('sport_oui', cl.sport_oui||''); rb('sport_freq', cl.sport_freq||'');
+  rb('regime_oui', cl.regime_oui||''); rb('eau', cl.eau||'');
+  rb('grignotage', cl.grignotage||''); rb('appetit', cl.appetit||'');
+  rb('prise_poids', cl.prise_poids||'');
+  if (cl.attirance) {
+    if (cl.attirance.includes('Sucrés')) { const el = document.getElementById('attr_sucres'); if(el) el.checked = true; }
+    if (cl.attirance.includes('Salés')) { const el = document.getElementById('attr_sales'); if(el) el.checked = true; }
+  }
+}
+
+async function saveAlim() {
+  const attirances = [];
+  if (document.getElementById('attr_sucres')?.checked) attirances.push('Sucrés');
+  if (document.getElementById('attr_sales')?.checked) attirances.push('Salés');
+  const updates = {
+    sport_oui: grb('sport_oui'), sport_type: v('f_sport_type'), sport_freq: grb('sport_freq'),
+    regime_oui: grb('regime_oui'), regime_type: v('f_regime_type'),
+    eau: grb('eau'), grignotage: grb('grignotage'), grignotage_heure: v('f_grignotage_heure'),
+    appetit: grb('appetit'), attirance: attirances.join(', '), exemples_aliments: v('f_exemples_aliments'),
+    hygiene_vie: v('f_hygiene_vie'), prise_poids: grb('prise_poids'),
+    kilos_pris: v('f_kilos_pris')||null, depuis_quand: v('f_depuis_quand'),
+    poids_actuel: v('f_poids_actuel')||null, poids_souhaite: v('f_poids_souhaite')||null,
+    taille_m: v('f_taille_m')||null, imc_actuel: v('f_imc_actuel')||null,
+    imc_souhaite: v('f_imc_souhaite')||null,
+  };
+  const { error } = await sb.from('clients').update(updates).eq('id', currentClient.id);
+  if (!error) { Object.assign(currentClient, updates); showToast('Enregistré ✓'); }
+  else alert('Erreur : ' + error.message);
+}
+
+// ---- ONGLET SANTE ----
+function renderSante(c) {
+  const cl = currentClient;
+  const ouiNon = (name, val) => `
+    <div class="oui-non">
+      <label><input type="radio" name="${name}" value="Oui" ${val==='Oui'?'checked':''}> Oui</label>
+      <label><input type="radio" name="${name}" value="Non" ${val==='Non'?'checked':''}> Non</label>
+    </div>`;
+  c.innerHTML = `
+    <p class="section-label">Précautions & habitudes</p>
+    <div class="form-grid">
+      <div class="field full"><label>Avez-vous tendance à gonfler ?</label>${ouiNon('gonfler', cl.gonfler)}</div>
+      <div class="field full"><label>Si oui, à quel moment ?</label><input id="f_gonfler_moment" value="${cl.gonfler_moment||''}"></div>
+      <div class="field full"><label>Transpirez-vous facilement ?</label>${ouiNon('transpiration', cl.transpiration)}</div>
+      <div class="field full"><label>Avez-vous de la cellulite ?</label>${ouiNon('cellulite', cl.cellulite)}</div>
+      <div class="field full"><label>Si oui, à quel niveau ?</label><input id="f_cellulite_niveau" value="${cl.cellulite_niveau||''}"></div>
+      <div class="field full"><label>Souffrez-vous de troubles circulatoires ?</label>${ouiNon('troubles_circu', cl.troubles_circu)}</div>
+      <div class="field full"><label>Avez-vous une maladie grave ?</label>${ouiNon('maladie_grave', cl.maladie_grave)}</div>
+      <div class="field full"><label>Avez-vous une maladie cardiaque ?</label>${ouiNon('maladie_cardiaque', cl.maladie_cardiaque)}</div>
+      <div class="field full"><label>Avez-vous des troubles épileptiques ?</label>${ouiNon('epilepsie', cl.epilepsie)}</div>
+      <div class="field full"><label>Êtes-vous hypertendu(e) ?</label>${ouiNon('hypertension', cl.hypertension)}</div>
+      <div class="field full"><label>Portez-vous un stérilet ?</label>${ouiNon('sterilet', cl.sterilet)}</div>
+      <div class="field full"><label>Êtes-vous enceinte ?</label>${ouiNon('enceinte', cl.enceinte)}</div>
+    </div>
+    <p class="section-label">Bilan bien-être / équilibre</p>
+    <div class="form-grid">
+      <div class="field full"><label>Êtes-vous anxieux/anxieuse ?</label>${ouiNon('anxieux', cl.anxieux)}</div>
+      <div class="field full"><label>Avez-vous des troubles de l'humeur ?</label>${ouiNon('troubles_humeur', cl.troubles_humeur)}</div>
+      <div class="field full"><label>Avez-vous des troubles du sommeil ?</label>${ouiNon('troubles_sommeil', cl.troubles_sommeil)}</div>
+      <div class="field full"><label>Avez-vous des troubles du transit ?</label>${ouiNon('troubles_transit', cl.troubles_transit)}</div>
+      <div class="field full"><label>Avez-vous des bouffées de chaleur ?</label>${ouiNon('bouffees_chaleur', cl.bouffees_chaleur)}</div>
+      <div class="field full"><label>Êtes-vous sujet(te) aux migraines / céphalées ?</label>${ouiNon('migraines', cl.migraines)}</div>
+      <div class="field full"><label>Faites-vous des cauchemars ?</label>${ouiNon('cauchemars', cl.cauchemars)}</div>
+      <div class="field full"><label>Fumez-vous ?</label>${ouiNon('tabac', cl.tabac)}</div>
+      <div class="field full"><label>Si oui, avez-vous déjà essayé d'arrêter ?</label>${ouiNon('tabac_arret', cl.tabac_arret)}</div>
+      <div class="field full"><label>Si oui, par quelles méthodes ?</label><input id="f_tabac_methodes" value="${cl.tabac_methodes||''}"></div>
+      <div class="field full"><label>Quels résultats avez-vous obtenus ?</label><input id="f_tabac_resultats" value="${cl.tabac_resultats||''}"></div>
+      <div class="field full"><label>Avez-vous l'habitude de vous faire masser en institut ?</label>${ouiNon('massage_institut', cl.massage_institut)}</div>
+      <div class="field"><label>Si oui, à quelle fréquence ?</label><input id="f_massage_freq" value="${cl.massage_freq||''}"></div>
+      <div class="field full"><label>Que faites-vous au quotidien pour vous détendre ?</label><textarea id="f_detente">${cl.detente||''}</textarea></div>
+      <div class="field full"><label>En ce moment, comment vous sentez-vous ?</label><textarea id="f_ressenti_general">${cl.ressenti_general||''}</textarea></div>
+    </div>
+    <p class="section-label">Autorisation photos</p>
+    <div class="form-grid">
+      <div class="field full">
+        <label>J'autorise le Centre à utiliser mes photos et résultats à des fins de suivi et de communication (anonymat garanti)</label>
+        ${ouiNon('autorisation_photos', cl.autorisation_photos)}
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveSante()">💾 Enregistrer</button>`;
+}
+
+async function saveSante() {
+  const fields = ['gonfler','transpiration','cellulite','troubles_circu','maladie_grave',
+    'maladie_cardiaque','epilepsie','hypertension','sterilet','enceinte',
+    'anxieux','troubles_humeur','troubles_sommeil','troubles_transit','bouffees_chaleur',
+    'migraines','cauchemars','tabac','tabac_arret','massage_institut','autorisation_photos'];
+  const updates = {};
+  fields.forEach(f => updates[f] = grb(f));
+  updates.gonfler_moment = v('f_gonfler_moment');
+  updates.cellulite_niveau = v('f_cellulite_niveau');
+  updates.tabac_arret = grb('tabac_arret');
+  updates.tabac_methodes = v('f_tabac_methodes');
+  updates.tabac_resultats = v('f_tabac_resultats');
+  updates.massage_freq = v('f_massage_freq');
+  updates.detente = v('f_detente');
+  updates.ressenti_general = v('f_ressenti_general');
+  const { error } = await sb.from('clients').update(updates).eq('id', currentClient.id);
+  if (!error) { Object.assign(currentClient, updates); showToast('Enregistré ✓'); }
+  else alert('Erreur : ' + error.message);
+}
+
+// ---- ONGLET RDV ----
+async function renderRdv(c) {
+  const { data: rdvs } = await sb.from('rendez_vous').select('*').eq('client_id', currentClient.id).order('date_rdv', {ascending:false});
+  c.innerHTML = `
+    <div class="rdv-header-row">
+      <p class="section-label" style="margin:0">Historique des rendez-vous</p>
+      <button class="add-rdv-btn" onclick="openNewRdvModal()">+ Nouveau rdv</button>
+    </div>
+    <div id="rdvList">
+      ${!rdvs?.length
+        ? '<div class="empty-rdv">Aucun rendez-vous enregistré pour ce client.</div>'
+        : rdvs.map(r => rdvCard(r)).join('')}
+    </div>`;
+}
+
+function rdvCard(r) {
+  const dateStr = r.date_rdv ? new Date(r.date_rdv+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) : '—';
+  return `<div class="rdv-card">
+    <div class="rdv-toggle" onclick="toggleRdv('rdvb-${r.id}')">
+      <div class="rdv-toggle-left">
+        <div class="rdv-dot"></div>
+        <div><div class="rdv-date-str">${dateStr}</div>${r.praticienne?`<div class="rdv-prat">${r.praticienne}</div>`:''}</div>
+      </div>
+      <span style="color:var(--text-muted);font-size:18px">›</span>
+    </div>
+    <div class="rdv-body" id="rdvb-${r.id}">
+      <div class="mesures-row">
+        <div class="mesure-box"><div class="mesure-lbl">Poids</div><div class="mesure-val">${r.poids||'—'}<span class="mesure-unit"> kg</span></div></div>
+        <div class="mesure-box"><div class="mesure-lbl">Taille</div><div class="mesure-val">${r.tour_taille||'—'}<span class="mesure-unit"> cm</span></div></div>
+        <div class="mesure-box"><div class="mesure-lbl">Hanches</div><div class="mesure-val">${r.tour_hanches||'—'}<span class="mesure-unit"> cm</span></div></div>
+        <div class="mesure-box"><div class="mesure-lbl">Cuisses G/D</div><div class="mesure-val">${r.tour_cuisses_g||'—'}/${r.tour_cuisses_d||'—'}<span class="mesure-unit"> cm</span></div></div>
+        <div class="mesure-box"><div class="mesure-lbl">Mollets G/D</div><div class="mesure-val">${r.tour_mollets_g||'—'}/${r.tour_mollets_d||'—'}<span class="mesure-unit"> cm</span></div></div>
+      </div>
+      ${r.bras_g||r.bras_d ? `<div class="info-block"><div class="info-block-label">Bras G/D</div><div class="info-block-val">${r.bras_g||'—'} / ${r.bras_d||'—'} cm</div></div>` : ''}
+      ${r.soins_effectues?`<div class="info-block"><div class="info-block-label">Soins effectués</div><div class="info-block-val">${r.soins_effectues}</div></div>`:''}
+      ${r.soins_preconises?`<div class="info-block"><div class="info-block-label">Soins préconisés</div><div class="info-block-val">${r.soins_preconises}</div></div>`:''}
+      ${r.ressenti_client?`<div class="info-block"><div class="info-block-label">Ressenti client</div><div class="info-block-val">${r.ressenti_client}</div></div>`:''}
+      ${r.observations?`<div class="info-block"><div class="info-block-label">Observations</div><div class="info-block-val">${r.observations}</div></div>`:''}
+      <div class="photos-section">
+        <div class="info-block-label">Photos</div>
+        <div class="photos-grid" id="photogrid-${r.id}">
+          <div class="photo-add" onclick="triggerPhotoUpload('${r.id}')">+</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function loadPhotos(rdvId) {
+  const { data } = await sb.from('photos').select('*').eq('rdv_id', rdvId);
+  const grid = document.getElementById('photogrid-'+rdvId);
+  if (!grid) return;
+  const existing = (data||[]).map(p => `<img src="${p.url}" class="photo-thumb" alt="Photo" onclick="openLightbox('${p.url}')">`).join('');
+  grid.innerHTML = existing + `<div class="photo-add" onclick="triggerPhotoUpload('${rdvId}')">+</div>`;
+}
+
+function toggleRdv(id) {
+  const el = document.getElementById(id);
+  const isOpen = el.classList.contains('open');
+  document.querySelectorAll('.rdv-body').forEach(b => b.classList.remove('open'));
+  if (!isOpen) { el.classList.add('open'); loadPhotos(id.replace('rdvb-','')); }
+}
+
+function triggerClientPhotoUpload(clientId) {
+  currentRdvId = null;
+  document.getElementById('photoInput').click();
+  document.getElementById('photoInput').dataset.mode = 'client';
+  document.getElementById('photoInput').dataset.clientId = clientId;
+}
+
+async function loadClientPhotos(clientId) {
+  const { data } = await sb.from('photos').select('*').eq('client_id', clientId).is('rdv_id', null);
+  const grid = document.getElementById('photogrid-client-'+clientId);
+  if (!grid) return;
+  const existing = (data||[]).map(p => `<img src="${p.url}" class="photo-thumb" alt="Photo" onclick="openLightbox('${p.url}')">`).join('');
+  grid.innerHTML = existing + `<div class="photo-add" onclick="triggerClientPhotoUpload('${clientId}')">+</div>`;
+}
+
+function triggerPhotoUpload(rdvId) {
+  currentRdvId = rdvId;
+  document.getElementById('photoInput').dataset.mode = 'rdv';
+  document.getElementById('photoInput').click();
+}
+
+async function handlePhotoUpload(event) {
+  const files = Array.from(event.target.files);
+  const mode = event.target.dataset.mode;
+  const clientId = event.target.dataset.clientId || currentClient.id;
+  for (const file of files) {
+    const path = `${clientId}/${mode==='rdv'?currentRdvId:'general'}/${Date.now()}_${file.name}`;
+    const { error } = await sb.storage.from('photos-clients').upload(path, file, {upsert:true});
+    if (!error) {
+      const { data: urlData } = sb.storage.from('photos-clients').getPublicUrl(path);
+      await sb.from('photos').insert({
+        client_id: clientId,
+        rdv_id: mode==='rdv' ? currentRdvId : null,
+        url: urlData.publicUrl
+      });
+    }
+  }
+  if (mode==='rdv') loadPhotos(currentRdvId);
+  else loadClientPhotos(clientId);
+  event.target.value = '';
+  showToast('Photos ajoutées ✓');
+}
+
+function openLightbox(url) {
+  const lb = document.createElement('div');
+  lb.className = 'lightbox';
+  lb.innerHTML = `<img src="${url}" alt="Photo client">`;
+  lb.onclick = () => lb.remove();
+  document.body.appendChild(lb);
+}
+
+// ---- ONGLET SUIVI ----
+async function renderSuivi(c) {
+  const { data: rdvs } = await sb.from('rendez_vous').select('*').eq('client_id', currentClient.id).order('date_rdv', {ascending:true});
+  const last4 = (rdvs||[]).slice(-4);
+  const headers = last4.map(r => new Date(r.date_rdv+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}));
+  const mesures = [
+    { label: 'Poids (kg)', key: 'poids' },
+    { label: 'Bras G (cm)', key: 'bras_g' },
+    { label: 'Bras D (cm)', key: 'bras_d' },
+    { label: 'Taille (cm)', key: 'tour_taille' },
+    { label: 'Hanches (cm)', key: 'tour_hanches' },
+    { label: 'Cuisse G (cm)', key: 'tour_cuisses_g' },
+    { label: 'Cuisse D (cm)', key: 'tour_cuisses_d' },
+    { label: 'Mollet G (cm)', key: 'tour_mollets_g' },
+    { label: 'Mollet D (cm)', key: 'tour_mollets_d' },
+    { label: 'Ressenti', key: 'ressenti_client' },
+  ];
+  const emptyHeaders = Array(Math.max(0, 4-last4.length)).fill('—');
+  const allHeaders = [...headers, ...emptyHeaders];
+  c.innerHTML = `
+    <p class="section-label">Suivi des résultats</p>
+    ${!last4.length ? '<p style="color:var(--text-muted);font-size:13px">Aucun rendez-vous enregistré. Ajoutez des rendez-vous pour voir l\'évolution ici.</p>' : `
+    <div style="overflow-x:auto">
+      <table class="suivi-table">
+        <thead>
+          <tr>
+            <th>Zone</th>
+            ${allHeaders.map(h => `<th>${h}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${mesures.map(m => `
+            <tr>
+              <td style="font-weight:500;white-space:nowrap">${m.label}</td>
+              ${allHeaders.map((h,i) => `<td>${i < last4.length ? (last4[i][m.key]||'—') : '—'}</td>`).join('')}
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`}`;
+}
+
+// ---- ONGLET NOTES ----
+function renderNotes(c) {
+  c.innerHTML = `
+    <p class="section-label">Notes libres & remarques particulières</p>
+    <div class="notes-wrap">
+      <textarea id="f_notes" placeholder="Notes diverses, observations entre les séances, remarques particulières...">${currentClient.notes_initiales||''}</textarea>
+    </div>
+    <button class="save-btn" onclick="saveNotes()">💾 Enregistrer</button>`;
+}
+
+async function saveNotes() {
+  const notes = v('f_notes');
+  const { error } = await sb.from('clients').update({notes_initiales: notes}).eq('id', currentClient.id);
+  if (!error) { currentClient.notes_initiales = notes; showToast('Notes enregistrées ✓'); }
+}
+
+// ---- MODALS ----
+function openNewClientModal() {
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="overlay" onclick="closeOverlay(event)">
+      <div class="modal">
+        <div class="modal-head"><h3>Nouveau client</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field"><label>Prénom *</label><input id="nc_prenom" placeholder="Marie"></div>
+            <div class="field"><label>Nom *</label><input id="nc_nom" placeholder="Dupont"></div>
+            <div class="field"><label>Téléphone</label><input id="nc_tel" placeholder="06 12 34 56 78"></div>
+            <div class="field"><label>Email</label><input id="nc_email" placeholder="marie@email.fr"></div>
+            <div class="field"><label>Date de naissance</label><input type="date" id="nc_dob"></div>
+            <div class="field"><label>Ville</label><input id="nc_ville" placeholder="Nevers"></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+          <button class="save-btn" style="margin:0" onclick="createClient()">+ Créer la fiche</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function createClient() {
+  const prenom = v('nc_prenom').trim(), nom = v('nc_nom').trim();
+  if (!prenom || !nom) { alert('Prénom et nom sont obligatoires'); return; }
+  const { data, error } = await sb.from('clients').insert({
+    prenom, nom, telephone: v('nc_tel'), email: v('nc_email'),
+    date_naissance: v('nc_dob')||null, ville: v('nc_ville')
+  }).select().single();
+  if (!error) { closeModal(); await loadClients(); selectClient(data.id); showToast('Fiche créée ✓'); }
+  else alert('Erreur : ' + error.message);
+}
+
+function openNewRdvModal() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="overlay" onclick="closeOverlay(event)">
+      <div class="modal">
+        <div class="modal-head"><h3>Nouveau rendez-vous</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field"><label>Date *</label><input type="date" id="nr_date" value="${today}"></div>
+            <div class="field"><label>Praticienne</label><input id="nr_prat" placeholder="Sophie"></div>
+          </div>
+          <p class="section-label" style="margin-top:1.25rem">Mesures</p>
+          <div class="form-grid">
+            <div class="field"><label>Poids (kg)</label><input type="number" step="0.1" id="nr_poids" placeholder="65.0"></div>
+            <div class="field"><label>IMC</label><input type="number" step="0.1" id="nr_imc" placeholder="22.5"></div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Bras gauche (cm du coude)</label><input type="number" step="0.5" id="nr_bg" placeholder="30"></div>
+            <div class="field"><label>Bras droit (cm du coude)</label><input type="number" step="0.5" id="nr_bd" placeholder="30"></div>
+            <div class="field full"><label>Commentaires bras</label><input id="nr_bg_comment" placeholder="Observations..."></div>
+            <div class="field"><label>Taille (cm du nombril)</label><input type="number" step="0.5" id="nr_taille" placeholder="78"></div>
+            <div class="field full"><label>Commentaires taille</label><input id="nr_taille_comment" placeholder="Observations..."></div>
+            <div class="field"><label>Hanches (cm du nombril)</label><input type="number" step="0.5" id="nr_hanches" placeholder="95"></div>
+            <div class="field full"><label>Commentaires hanches</label><input id="nr_hanches_comment" placeholder="Observations..."></div>
+            <div class="field"><label>Cuisse gauche (cm haut rotule)</label><input type="number" step="0.5" id="nr_cg" placeholder="56"></div>
+            <div class="field"><label>Cuisse droite (cm haut rotule)</label><input type="number" step="0.5" id="nr_cd" placeholder="56"></div>
+            <div class="field full"><label>Commentaires cuisses</label><input id="nr_cuisses_comment" placeholder="Observations..."></div>
+            <div class="field"><label>Mollet gauche (cm haut rotule)</label><input type="number" step="0.5" id="nr_mg" placeholder="36"></div>
+            <div class="field"><label>Mollet droit (cm haut rotule)</label><input type="number" step="0.5" id="nr_md" placeholder="36"></div>
+            <div class="field"><label>Écartement des jambes (cm)</label><input type="number" step="0.5" id="nr_ecart" placeholder="0"></div>
+            <div class="field full"><label>Commentaires mollets / écartement</label><input id="nr_mollets_comment" placeholder="Observations..."></div>
+          </div>
+          <p class="section-label" style="margin-top:1.25rem">Soins & observations</p>
+          <div class="form-grid">
+            <div class="field full"><label>Soins effectués</label><textarea id="nr_soins_eff" placeholder="Drainage lymphatique, enveloppement..."></textarea></div>
+            <div class="field full"><label>Soins préconisés (prochain rdv)</label><textarea id="nr_soins_preco" placeholder="Cryolipolyse zone abdominale..."></textarea></div>
+            <div class="field full"><label>Ressenti client</label><textarea id="nr_ressenti" placeholder="Sensation après la séance..."></textarea></div>
+            <div class="field full"><label>Observations</label><textarea id="nr_obs" placeholder="Remarques de la praticienne..."></textarea></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+          <button class="save-btn" style="margin:0" onclick="createRdv()">💾 Enregistrer</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function createRdv() {
+  const date = v('nr_date');
+  if (!date) { alert('La date est obligatoire'); return; }
+  const { error } = await sb.from('rendez_vous').insert({
+    client_id: currentClient.id, date_rdv: date, praticienne: v('nr_prat'),
+    poids: v('nr_poids')||null, imc: v('nr_imc')||null,
+    bras_g: v('nr_bg')||null, bras_d: v('nr_bd')||null, commentaire_bras: v('nr_bg_comment'),
+    tour_taille: v('nr_taille')||null, commentaire_taille: v('nr_taille_comment'),
+    tour_hanches: v('nr_hanches')||null, commentaire_hanches: v('nr_hanches_comment'),
+    tour_cuisses_g: v('nr_cg')||null, tour_cuisses_d: v('nr_cd')||null, commentaire_cuisses: v('nr_cuisses_comment'),
+    tour_mollets_g: v('nr_mg')||null, tour_mollets_d: v('nr_md')||null,
+    ecartement_jambes: v('nr_ecart')||null, commentaire_mollets: v('nr_mollets_comment'),
+    soins_effectues: v('nr_soins_eff'), soins_preconises: v('nr_soins_preco'),
+    ressenti_client: v('nr_ressenti'), observations: v('nr_obs'),
+  });
+  if (!error) { closeModal(); await renderTab(); showToast('Rendez-vous enregistré ✓'); }
+  else alert('Erreur : ' + error.message);
+}
+
+function confirmDeleteClient() {
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="overlay" onclick="closeOverlay(event)">
+      <div class="modal" style="width:420px">
+        <div class="modal-head"><h3>Supprimer ce client</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <div class="modal-body">
+          <p style="font-size:14px;line-height:1.6;color:var(--text)">Êtes-vous sûre de vouloir supprimer la fiche de <strong>${currentClient.prenom} ${currentClient.nom}</strong> ?</p>
+          <p style="font-size:13px;color:var(--text-muted);margin-top:8px">Tous les rendez-vous et photos associés seront également supprimés. Cette action est irréversible.</p>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+          <button style="padding:10px 22px;background:#C2496A;color:white;border:none;border-radius:10px;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;" onclick="deleteClient()">🗑 Supprimer définitivement</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function deleteClient() {
+  const { error } = await sb.from('clients').delete().eq('id', currentClient.id);
+  if (!error) {
+    closeModal();
+    currentClient = null;
+    currentTab = 'infos';
+    document.getElementById('clientView').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'flex';
+    await loadClients();
+    showToast('Client supprimé ✓');
+  } else { alert('Erreur : ' + error.message); }
+}
+
+function closeOverlay(e) { if (e.target.classList.contains('overlay')) closeModal(); }
+function closeModal() { document.getElementById('modalContainer').innerHTML = ''; }
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+loadClients();
+</script>
+</body>
+</html>
