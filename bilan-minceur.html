@@ -518,7 +518,7 @@ function renderBesoins(c) {
       <div class="field full">
         <label>Ressentez-vous...</label>
         <div style="margin-top:6px;padding:10px;background:var(--rose-pale);border-radius:var(--radius);">
-          ${checkboxGroup('blocage', ['Rétention d'eau','Jambes lourdes','Cellulite (aqueuse, adipeuse, fibreuse...)','Manque de tonicité'], cl.blocage)}
+          ${checkboxGroup('blocage', ['Rétention d\'eau','Jambes lourdes','Cellulite (aqueuse, adipeuse, fibreuse...)','Manque de tonicité'], cl.blocage)}
           <label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:4px 0;">
             <input type="checkbox" name="blocage" value="Autre" ${cl.blocage?.includes('Autre')?'checked':''} style="accent-color:var(--rose);width:15px;height:15px;"> Autre à préciser :
           </label>
