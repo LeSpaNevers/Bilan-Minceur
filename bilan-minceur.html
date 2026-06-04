@@ -413,21 +413,125 @@ async function loadAllPhotos(clientId) {
 }
 
 // ── BESOINS ──
+function checkboxGroup(name, options, savedVal) {
+  const saved = savedVal || '';
+  return options.map(opt => `
+    <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:4px 0;">
+      <input type="checkbox" name="${name}" value="${opt}" ${saved.includes(opt)?'checked':''} onchange="syncAutre('${name}')" style="accent-color:var(--rose);width:15px;height:15px;"> ${opt}
+    </label>`).join('');
+}
+
+function syncAutre(name) {
+  // nothing needed, just triggers UI update
+}
+
+function getChecked(name) {
+  const checked = Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+  const autreInput = document.getElementById('autre_'+name);
+  if (autreInput && autreInput.value.trim()) checked.push('Autre: ' + autreInput.value.trim());
+  return checked.join(', ');
+}
+
 function renderBesoins(c) {
   const cl = currentClient;
+  const autreVal = (name, saved) => {
+    if (!saved) return '';
+    const match = saved.match(/Autre: (.+?)(?:,|$)/);
+    return match ? match[1] : '';
+  };
+
   c.innerHTML = `
     <p class="section-label">Vos besoins</p>
+
     <div class="form-grid">
-      <div class="field full"><label>Qu'est-ce qui a déclenché votre prise de rdv ?</label><textarea id="f_declencheur">${cl.declencheur||''}</textarea></div>
-      <div class="field full"><label>Quels résultats attendez-vous de ce programme Minceur ?</label><textarea id="f_resultats_attendus">${cl.resultats_attendus||''}</textarea></div>
-      <div class="field full"><label>Depuis combien de temps constatez-vous ce problème ?</label><textarea id="f_duree_probleme">${cl.duree_probleme||''}</textarea></div>
-      <div class="field full"><label>Y a-t-il un facteur particulier qui ait déclenché ce problème ?</label><textarea id="f_facteur_declencheur">${cl.facteur_declencheur||''}</textarea></div>
-      <div class="field full"><label>Que faites-vous à la maison pour contrer ce problème ? (produits, sport, nourriture)</label><textarea id="f_actions_maison">${cl.actions_maison||''}</textarea></div>
-      <div class="field full"><label>Selon vous, qu'est-ce qui fait que vous n'arrivez pas à y remédier seul ?</label><textarea id="f_blocage">${cl.blocage||''}</textarea></div>
-      <div class="field full"><label>Comment ressentez-vous votre peau ? (confortable, rugueuse, souple, relâchée...)</label><textarea id="f_ressenti_peau">${cl.ressenti_peau||''}</textarea></div>
-      <div class="field full"><label>Quelles sont les zones qui vous préoccupent particulièrement ?</label><textarea id="f_zones_preoccupantes">${cl.zones_preoccupantes||''}</textarea></div>
-      <div class="field full"><label>Avez-vous déjà essayé d'y remédier ? Comment ? Quels résultats ?</label><textarea id="f_tentatives_precedentes">${cl.tentatives_precedentes||''}</textarea></div>
+      <div class="field full">
+        <label>Qu'est-ce qui a déclenché votre prise de RDV ?</label>
+        <div style="margin-top:6px;padding:10px;background:var(--rose-pale);border-radius:var(--radius);">
+          ${checkboxGroup('declencheur', ['Déclic','Objectif perso','Changement récent','Évènement particulier'], cl.declencheur)}
+          <label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:4px 0;">
+            <input type="checkbox" name="declencheur" value="Autre" ${cl.declencheur?.includes('Autre')?'checked':''} style="accent-color:var(--rose);width:15px;height:15px;"> Autre à préciser :
+          </label>
+          <input id="autre_declencheur" value="${autreVal('declencheur', cl.declencheur)}" placeholder="Préciser..." style="margin-left:22px;width:calc(100% - 22px);padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;margin-top:2px;">
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Quels résultats attendez-vous de ce programme minceur ?</label>
+        <div style="margin-top:6px;padding:10px;background:var(--rose-pale);border-radius:var(--radius);">
+          ${checkboxGroup('resultats_attendus', ['Perte de centimètres','Raffermissement','Silhouette','Bien-être'], cl.resultats_attendus)}
+          <label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:4px 0;">
+            <input type="checkbox" name="resultats_attendus" value="Autre" ${cl.resultats_attendus?.includes('Autre')?'checked':''} style="accent-color:var(--rose);width:15px;height:15px;"> Autre à préciser :
+          </label>
+          <input id="autre_resultats_attendus" value="${autreVal('resultats_attendus', cl.resultats_attendus)}" placeholder="Préciser..." style="margin-left:22px;width:calc(100% - 22px);padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;margin-top:2px;">
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Depuis combien de temps constatez-vous cette problématique ?</label>
+        <textarea id="f_duree_probleme" placeholder="Ex: 6 mois, 2 ans...">${cl.duree_probleme||''}</textarea>
+      </div>
+
+      <div class="field full">
+        <label>Y a-t-il un facteur particulier qui a déclenché cette situation ?</label>
+        <div style="margin-top:6px;padding:10px;background:var(--rose-pale);border-radius:var(--radius);">
+          ${checkboxGroup('facteur_declencheur', ['Changement de rythme','Stress','Grossesse','Alimentation','Arrêt du sport'], cl.facteur_declencheur)}
+          <label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:4px 0;">
+            <input type="checkbox" name="facteur_declencheur" value="Autre" ${cl.facteur_declencheur?.includes('Autre')?'checked':''} style="accent-color:var(--rose);width:15px;height:15px;"> Autre à préciser :
+          </label>
+          <input id="autre_facteur_declencheur" value="${autreVal('facteur_declencheur', cl.facteur_declencheur)}" placeholder="Préciser..." style="margin-left:22px;width:calc(100% - 22px);padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;margin-top:2px;">
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Zones qui vous préoccupent le plus</label>
+        <div style="margin-top:6px;padding:10px;background:var(--rose-pale);border-radius:var(--radius);">
+          ${checkboxGroup('zones_preoccupantes', ['Ventre','Cuisses','Hanches','Bras','Dos'], cl.zones_preoccupantes)}
+          <label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:4px 0;">
+            <input type="checkbox" name="zones_preoccupantes" value="Autre" ${cl.zones_preoccupantes?.includes('Autre')?'checked':''} style="accent-color:var(--rose);width:15px;height:15px;"> Autre à préciser :
+          </label>
+          <input id="autre_zones_preoccupantes" value="${autreVal('zones_preoccupantes', cl.zones_preoccupantes)}" placeholder="Préciser..." style="margin-left:22px;width:calc(100% - 22px);padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;margin-top:2px;">
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Que faites-vous actuellement à la maison pour améliorer cette situation ?</label>
+        <div style="margin-top:6px;padding:10px;background:var(--rose-pale);border-radius:var(--radius);">
+          ${checkboxGroup('actions_maison', ['Activité physique','Alimentation équilibrée','Produits cosmétiques minceur','Massages / soins','Rien de particulier'], cl.actions_maison)}
+          <label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:4px 0;">
+            <input type="checkbox" name="actions_maison" value="Autre" ${cl.actions_maison?.includes('Autre')?'checked':''} style="accent-color:var(--rose);width:15px;height:15px;"> Autre à préciser :
+          </label>
+          <input id="autre_actions_maison" value="${autreVal('actions_maison', cl.actions_maison)}" placeholder="Préciser..." style="margin-left:22px;width:calc(100% - 22px);padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;margin-top:2px;">
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Comment ressentez-vous votre peau aujourd'hui ?</label>
+        <div style="margin-top:6px;padding:10px;background:var(--rose-pale);border-radius:var(--radius);">
+          ${checkboxGroup('ressenti_peau', ['Ferme','Relâchée','Tonique','Rugueuse','Lisse'], cl.ressenti_peau)}
+          <label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:4px 0;">
+            <input type="checkbox" name="ressenti_peau" value="Autre" ${cl.ressenti_peau?.includes('Autre')?'checked':''} style="accent-color:var(--rose);width:15px;height:15px;"> Autre à préciser :
+          </label>
+          <input id="autre_ressenti_peau" value="${autreVal('ressenti_peau', cl.ressenti_peau)}" placeholder="Préciser..." style="margin-left:22px;width:calc(100% - 22px);padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;margin-top:2px;">
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Ressentez-vous...</label>
+        <div style="margin-top:6px;padding:10px;background:var(--rose-pale);border-radius:var(--radius);">
+          ${checkboxGroup('blocage', ['Rétention d'eau','Jambes lourdes','Cellulite (aqueuse, adipeuse, fibreuse...)','Manque de tonicité'], cl.blocage)}
+          <label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:4px 0;">
+            <input type="checkbox" name="blocage" value="Autre" ${cl.blocage?.includes('Autre')?'checked':''} style="accent-color:var(--rose);width:15px;height:15px;"> Autre à préciser :
+          </label>
+          <input id="autre_blocage" value="${autreVal('blocage', cl.blocage)}" placeholder="Préciser..." style="margin-left:22px;width:calc(100% - 22px);padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;margin-top:2px;">
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Avez-vous déjà essayé d'y remédier ? Si oui, comment et avec quels résultats ?</label>
+        <textarea id="f_tentatives_precedentes" placeholder="Répondre librement...">${cl.tentatives_precedentes||''}</textarea>
+      </div>
     </div>
+
     <p class="section-label">Vos attentes</p>
     <div class="form-grid">
       <div class="field full">
@@ -460,14 +564,22 @@ async function saveBesoins() {
   if (document.getElementById('raff_raffermir')?.checked) souhait.push('Raffermir');
   if (document.getElementById('raff_tonifier')?.checked) souhait.push('Tonifier');
   const updates = {
-    declencheur: v('f_declencheur'), resultats_attendus: v('f_resultats_attendus'),
-    duree_probleme: v('f_duree_probleme'), facteur_declencheur: v('f_facteur_declencheur'),
-    actions_maison: v('f_actions_maison'), blocage: v('f_blocage'),
-    ressenti_peau: v('f_ressenti_peau'), zones_preoccupantes: v('f_zones_preoccupantes'),
+    declencheur: getChecked('declencheur'),
+    resultats_attendus: getChecked('resultats_attendus'),
+    duree_probleme: v('f_duree_probleme'),
+    facteur_declencheur: getChecked('facteur_declencheur'),
+    zones_preoccupantes: getChecked('zones_preoccupantes'),
+    actions_maison: getChecked('actions_maison'),
+    ressenti_peau: getChecked('ressenti_peau'),
+    blocage: getChecked('blocage'),
     tentatives_precedentes: v('f_tentatives_precedentes'),
-    type_amincissement: grb('type_amincissement'), souhait_silhouette: souhait.join(', '),
-    raffermissement: v('f_raffermissement'), taille_pantalon: v('f_taille_pant'),
-    taille_jupe: v('f_taille_jupe'), taille_robe: v('f_taille_robe'), taille_souhaitee: v('f_taille_souhaitee'),
+    type_amincissement: grb('type_amincissement'),
+    souhait_silhouette: souhait.join(', '),
+    raffermissement: v('f_raffermissement'),
+    taille_pantalon: v('f_taille_pant'),
+    taille_jupe: v('f_taille_jupe'),
+    taille_robe: v('f_taille_robe'),
+    taille_souhaitee: v('f_taille_souhaitee'),
   };
   const { error } = await sb.from('clients').update(updates).eq('id', currentClient.id);
   if (!error) { Object.assign(currentClient, updates); showToast('Enregistré ✓'); }
