@@ -368,20 +368,47 @@ async function saveInfos() {
   else alert('Erreur : ' + error.message);
 }
 
+// ── PHOTO CARD ──
+function photoCard(p, mode, targetId) {
+  const dateAjout = p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+  const rdvDate = p.rendez_vous?.date_rdv ? new Date(p.rendez_vous.date_rdv+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) : null;
+  return `<div class="photo-item" id="pcard-${p.id}">
+    <div style="position:relative;display:inline-block;">
+      <img src="${p.url}" class="photo-thumb" alt="${p.titre||'Photo'}" onclick="openLightbox('${p.url}')">
+      <button onclick="deletePhoto('${p.id}','${mode}','${targetId}')" title="Supprimer" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.55);color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <span class="photo-date">${dateAjout}</span>
+    ${mode==='all' ? `<span class="photo-rdv-label">${rdvDate ? 'Rdv '+rdvDate : 'Fiche client'}</span>` : ''}
+    <input value="${p.titre||''}" placeholder="Titre..." onchange="updatePhotoMeta('${p.id}',this.value,null)" style="width:80px;font-size:11px;border:1px solid var(--border);border-radius:5px;padding:2px 5px;margin-top:2px;font-family:'DM Sans',sans-serif;color:var(--text);">
+    <textarea placeholder="Commentaire..." onchange="updatePhotoMeta('${p.id}',null,this.value)" style="width:80px;font-size:11px;border:1px solid var(--border);border-radius:5px;padding:2px 5px;resize:none;height:40px;font-family:'DM Sans',sans-serif;color:var(--text);">${p.commentaire||''}</textarea>
+  </div>`;
+}
+
+async function updatePhotoMeta(photoId, titre, commentaire) {
+  const updates = {};
+  if (titre !== null) updates.titre = titre;
+  if (commentaire !== null) updates.commentaire = commentaire;
+  await sb.from('photos').update(updates).eq('id', photoId);
+  showToast('Sauvegardé ✓');
+}
+
+async function deletePhoto(photoId, mode, targetId) {
+  if (!confirm('Supprimer cette photo ?')) return;
+  const { error } = await sb.from('photos').delete().eq('id', photoId);
+  if (!error) {
+    document.getElementById('pcard-'+photoId)?.remove();
+    if (mode === 'rdv') loadRdvPhotos(targetId);
+    loadAllPhotos(currentClient.id);
+    showToast('Photo supprimée ✓');
+  } else alert('Erreur : ' + error.message);
+}
+
 // ── ALL PHOTOS ──
 async function loadAllPhotos(clientId) {
   const { data } = await sb.from('photos').select('*, rendez_vous(date_rdv)').eq('client_id', clientId).order('created_at', {ascending: false});
   const grid = document.getElementById('photogrid-all-'+clientId);
   if (!grid) return;
-  const photos = (data||[]).map(p => {
-    const dateAjout = p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
-    const rdvDate = p.rendez_vous?.date_rdv ? new Date(p.rendez_vous.date_rdv+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) : null;
-    return `<div class="photo-item">
-      <img src="${p.url}" class="photo-thumb" alt="Photo" onclick="openLightbox('${p.url}')">
-      <span class="photo-date">${dateAjout}</span>
-      ${rdvDate ? `<span class="photo-rdv-label">Rdv ${rdvDate}</span>` : '<span class="photo-rdv-label">Fiche client</span>'}
-    </div>`;
-  }).join('');
+  const photos = (data||[]).map(p => photoCard(p, 'all', clientId)).join('');
   grid.innerHTML = photos + `<div class="photo-add" onclick="triggerPhotoUpload('client','${clientId}')">+</div>`;
 }
 
@@ -599,7 +626,7 @@ function rdvCard(r) {
   const dateStr = r.date_rdv ? new Date(r.date_rdv+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) : '—';
   const m = (label, val, unit='') => val ? `<div class="mesure-box"><div class="mesure-lbl">${label}</div><div class="mesure-val">${val}<span class="mesure-unit">${unit}</span></div></div>` : '';
   const ib = (label, val) => val ? `<div class="info-block"><div class="info-block-label">${label}</div><div class="info-block-val">${val}</div></div>` : '';
-  return `<div class="rdv-card">
+  return `<div class="rdv-card" id="rdvcard-${r.id}">
     <div class="rdv-toggle" onclick="toggleRdv('rdvb-${r.id}')">
       <div class="rdv-toggle-left">
         <div class="rdv-dot"></div>
@@ -608,6 +635,10 @@ function rdvCard(r) {
       <span style="color:var(--text-muted);font-size:20px">›</span>
     </div>
     <div class="rdv-body" id="rdvb-${r.id}">
+      <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
+        <button onclick="openEditRdvModal('${r.id}')" style="padding:6px 14px;border:1px solid var(--rose);border-radius:var(--radius);background:transparent;color:var(--rose);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">✏️ Modifier</button>
+        <button onclick="confirmDeleteRdv('${r.id}')" style="padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">🗑 Supprimer</button>
+      </div>
       <div class="mesures-row">
         ${m('Poids',r.poids,' kg')}${m('IMC',r.imc)}${m('Taille',r.tour_taille,' cm')}
         ${m('Hanches',r.tour_hanches,' cm')}${m('Bras G',r.bras_g,' cm')}${m('Bras D',r.bras_d,' cm')}
@@ -634,17 +665,12 @@ function rdvCard(r) {
   </div>`;
 }
 
+
 async function loadRdvPhotos(rdvId) {
   const { data } = await sb.from('photos').select('*').eq('rdv_id', rdvId).order('created_at', {ascending:false});
   const grid = document.getElementById('photogrid-'+rdvId);
   if (!grid) return;
-  const photos = (data||[]).map(p => {
-    const dateAjout = p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
-    return `<div class="photo-item">
-      <img src="${p.url}" class="photo-thumb" alt="Photo" onclick="openLightbox('${p.url}')">
-      <span class="photo-date">${dateAjout}</span>
-    </div>`;
-  }).join('');
+  const photos = (data||[]).map(p => photoCard(p, 'rdv', rdvId)).join('');
   grid.innerHTML = photos + `<div class="photo-add" onclick="triggerPhotoUpload('rdv','${rdvId}')">+</div>`;
 }
 
@@ -655,22 +681,57 @@ function toggleRdv(id) {
   if (!isOpen) { el.classList.add('open'); loadRdvPhotos(id.replace('rdvb-','')); }
 }
 
+function photoCard(p, mode, targetId) {
+  const dateAjout = p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+  const rdvDate = p.rendez_vous?.date_rdv ? new Date(p.rendez_vous.date_rdv+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) : null;
+  return `<div class="photo-item" id="pcard-${p.id}">
+    <div style="position:relative;display:inline-block;">
+      <img src="${p.url}" class="photo-thumb" alt="${p.titre||'Photo'}" onclick="openLightbox('${p.url}')">
+      <button onclick="deletePhoto('${p.id}','${mode}','${targetId}')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.55);color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
+    </div>
+    <span class="photo-date">${dateAjout}</span>
+    ${rdvDate && mode==='all' ? `<span class="photo-rdv-label">Rdv ${rdvDate}</span>` : ''}
+    ${mode==='all' && !p.rdv_id ? `<span class="photo-rdv-label">Fiche client</span>` : ''}
+    <input value="${p.titre||''}" placeholder="Titre..." onchange="updatePhotoMeta('${p.id}',this.value,null)" style="width:80px;font-size:11px;border:1px solid var(--border);border-radius:5px;padding:2px 5px;margin-top:2px;font-family:'DM Sans',sans-serif;">
+    <textarea placeholder="Commentaire..." onchange="updatePhotoMeta('${p.id}',null,this.value)" style="width:80px;font-size:11px;border:1px solid var(--border);border-radius:5px;padding:2px 5px;resize:none;height:40px;font-family:'DM Sans',sans-serif;">${p.commentaire||''}</textarea>
+  </div>`;
+}
+
+async function updatePhotoMeta(photoId, titre, commentaire) {
+  const updates = {};
+  if (titre !== null) updates.titre = titre;
+  if (commentaire !== null) updates.commentaire = commentaire;
+  await sb.from('photos').update(updates).eq('id', photoId);
+}
+
+async function deletePhoto(photoId, mode, targetId) {
+  if (!confirm('Supprimer cette photo ?')) return;
+  const { error } = await sb.from('photos').delete().eq('id', photoId);
+  if (!error) {
+    document.getElementById('pcard-'+photoId)?.remove();
+    if (currentTab === 'infos') loadAllPhotos(currentClient.id);
+    showToast('Photo supprimée ✓');
+  } else alert('Erreur : ' + error.message);
+}
+
 // ── PHOTO UPLOAD ──
 function triggerPhotoUpload(mode, targetId) {
   currentPhotoMode = mode;
   currentRdvId = mode === 'rdv' ? targetId : null;
   document.getElementById('photoInput').dataset.targetId = targetId;
+  document.getElementById('photoInput').dataset.mode = mode;
   document.getElementById('photoInput').click();
 }
 
 async function handlePhotoUpload(event) {
   const files = Array.from(event.target.files);
-  const mode = currentPhotoMode;
+  const mode = event.target.dataset.mode || currentPhotoMode;
   const targetId = event.target.dataset.targetId;
+  if (!files.length) return;
   for (const file of files) {
     const path = `${currentClient.id}/${mode==='rdv'?targetId:'general'}/${Date.now()}_${file.name}`;
-    const { error } = await sb.storage.from('photos-clients').upload(path, file, {upsert:true});
-    if (!error) {
+    const { error: upErr } = await sb.storage.from('photos-clients').upload(path, file, {upsert:true});
+    if (!upErr) {
       const { data: urlData } = sb.storage.from('photos-clients').getPublicUrl(path);
       await sb.from('photos').insert({
         client_id: currentClient.id,
@@ -680,7 +741,7 @@ async function handlePhotoUpload(event) {
     }
   }
   if (mode === 'rdv') loadRdvPhotos(targetId);
-  loadAllPhotos(currentClient.id);
+  if (currentTab === 'infos') loadAllPhotos(currentClient.id);
   event.target.value = '';
   showToast('Photos ajoutées ✓');
 }
@@ -833,7 +894,96 @@ async function createRdv() {
     soins_effectues: v('nr_soins_eff'), soins_preconises: v('nr_soins_preco'),
     ressenti_client: v('nr_ressenti'), observations: v('nr_obs'),
   });
-  if (!error) { closeModal(); await renderTab(); showToast('Rendez-vous enregistré ✓'); }
+  if (!error) {
+    closeModal();
+    await renderTab();
+    showToast('Rendez-vous enregistré ✓ — Vous pouvez maintenant ajouter des photos dans la liste des rdv.');
+  }
+  else alert('Erreur : ' + error.message);
+}
+
+async function openEditRdvModal(rdvId) {
+  const { data: r, error } = await sb.from('rendez_vous').select('*').eq('id', rdvId).single();
+  if (error || !r) { alert('Impossible de charger ce rendez-vous'); return; }
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="overlay" onclick="closeOverlay(event)">
+      <div class="modal">
+        <div class="modal-head"><h3>Modifier le rendez-vous</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field"><label>Date *</label><input type="date" id="er_date" value="${r.date_rdv||''}"></div>
+            <div class="field"><label>Praticienne</label><input id="er_prat" value="${r.praticienne||''}"></div>
+          </div>
+          <p class="section-label" style="margin-top:1.1rem">Mesures</p>
+          <div class="form-grid">
+            <div class="field"><label>Poids (kg)</label><input type="number" step="0.1" id="er_poids" value="${r.poids||''}"></div>
+            <div class="field"><label>IMC</label><input type="number" step="0.1" id="er_imc" value="${r.imc||''}"></div>
+            <div class="field"><label>Bras gauche (cm du coude)</label><input type="number" step="0.5" id="er_bg" value="${r.bras_g||''}"></div>
+            <div class="field"><label>Bras droit (cm du coude)</label><input type="number" step="0.5" id="er_bd" value="${r.bras_d||''}"></div>
+            <div class="field full"><label>Commentaires bras</label><input id="er_bg_comment" value="${r.commentaire_bras||''}"></div>
+            <div class="field"><label>Taille (cm du nombril)</label><input type="number" step="0.5" id="er_taille" value="${r.tour_taille||''}"></div>
+            <div class="field full"><label>Commentaires taille</label><input id="er_taille_comment" value="${r.commentaire_taille||''}"></div>
+            <div class="field"><label>Hanches (cm du nombril)</label><input type="number" step="0.5" id="er_hanches" value="${r.tour_hanches||''}"></div>
+            <div class="field full"><label>Commentaires hanches</label><input id="er_hanches_comment" value="${r.commentaire_hanches||''}"></div>
+            <div class="field"><label>Cuisse gauche (cm haut rotule)</label><input type="number" step="0.5" id="er_cg" value="${r.tour_cuisses_g||''}"></div>
+            <div class="field"><label>Cuisse droite (cm haut rotule)</label><input type="number" step="0.5" id="er_cd" value="${r.tour_cuisses_d||''}"></div>
+            <div class="field full"><label>Commentaires cuisses</label><input id="er_cuisses_comment" value="${r.commentaire_cuisses||''}"></div>
+            <div class="field"><label>Mollet gauche (cm haut rotule)</label><input type="number" step="0.5" id="er_mg" value="${r.tour_mollets_g||''}"></div>
+            <div class="field"><label>Mollet droit (cm haut rotule)</label><input type="number" step="0.5" id="er_md" value="${r.tour_mollets_d||''}"></div>
+            <div class="field"><label>Écartement des jambes (cm)</label><input type="number" step="0.5" id="er_ecart" value="${r.ecartement_jambes||''}"></div>
+            <div class="field full"><label>Commentaires mollets / écartement</label><input id="er_mollets_comment" value="${r.commentaire_mollets||''}"></div>
+          </div>
+          <p class="section-label" style="margin-top:1.1rem">Soins & observations</p>
+          <div class="form-grid">
+            <div class="field full"><label>Soins effectués</label><textarea id="er_soins_eff">${r.soins_effectues||''}</textarea></div>
+            <div class="field full"><label>Soins préconisés (prochain rdv)</label><textarea id="er_soins_preco">${r.soins_preconises||''}</textarea></div>
+            <div class="field full"><label>Ressenti client</label><textarea id="er_ressenti">${r.ressenti_client||''}</textarea></div>
+            <div class="field full"><label>Observations</label><textarea id="er_obs">${r.observations||''}</textarea></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+          <button class="save-btn" style="margin:0" onclick="saveRdv('${rdvId}')">💾 Enregistrer</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveRdv(rdvId) {
+  const date = document.getElementById('er_date').value;
+  if (!date) { alert('La date est obligatoire'); return; }
+  const { error } = await sb.from('rendez_vous').update({
+    date_rdv: date, praticienne: document.getElementById('er_prat').value,
+    poids: document.getElementById('er_poids').value||null,
+    imc: document.getElementById('er_imc').value||null,
+    bras_g: document.getElementById('er_bg').value||null,
+    bras_d: document.getElementById('er_bd').value||null,
+    commentaire_bras: document.getElementById('er_bg_comment').value,
+    tour_taille: document.getElementById('er_taille').value||null,
+    commentaire_taille: document.getElementById('er_taille_comment').value,
+    tour_hanches: document.getElementById('er_hanches').value||null,
+    commentaire_hanches: document.getElementById('er_hanches_comment').value,
+    tour_cuisses_g: document.getElementById('er_cg').value||null,
+    tour_cuisses_d: document.getElementById('er_cd').value||null,
+    commentaire_cuisses: document.getElementById('er_cuisses_comment').value,
+    tour_mollets_g: document.getElementById('er_mg').value||null,
+    tour_mollets_d: document.getElementById('er_md').value||null,
+    ecartement_jambes: document.getElementById('er_ecart').value||null,
+    commentaire_mollets: document.getElementById('er_mollets_comment').value,
+    soins_effectues: document.getElementById('er_soins_eff').value,
+    soins_preconises: document.getElementById('er_soins_preco').value,
+    ressenti_client: document.getElementById('er_ressenti').value,
+    observations: document.getElementById('er_obs').value,
+  }).eq('id', rdvId);
+  if (!error) { closeModal(); await renderTab(); showToast('Rendez-vous modifié ✓'); }
+  else alert('Erreur : ' + error.message);
+}
+
+async function confirmDeleteRdv(rdvId) {
+  if (!confirm('Supprimer ce rendez-vous ? Les photos associées seront aussi supprimées.')) return;
+  await sb.from('photos').delete().eq('rdv_id', rdvId);
+  const { error } = await sb.from('rendez_vous').delete().eq('id', rdvId);
+  if (!error) { await renderTab(); showToast('Rendez-vous supprimé ✓'); }
   else alert('Erreur : ' + error.message);
 }
 
