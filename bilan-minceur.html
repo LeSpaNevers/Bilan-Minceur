@@ -218,6 +218,53 @@ input[type="file"] { display: none; }
 .logout-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 10px; font-size: 12px; color: var(--rose); cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
 .logout-btn:hover { background: var(--rose-light); }
 .sidebar-logo > div:first-child { cursor: pointer; }
+
+/* ── GRAPHIQUES ── */
+.charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; margin-top: 0.75rem; }
+.chart-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0.8rem 0.9rem; break-inside: avoid; }
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.chart-title { font-size: 13px; font-weight: 500; }
+.chart-legend { font-size: 11px; color: var(--text-muted); display: flex; gap: 10px; }
+.chart-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.chart-card svg { width: 100%; height: auto; display: block; margin-top: 6px; }
+.chart-card text { font-family: 'DM Sans', sans-serif; }
+.chart-delta { font-size: 12px; color: var(--marron); margin-top: 4px; }
+.chart-empty { font-size: 12px; color: var(--text-muted); padding: 1.5rem 0; text-align: center; }
+.header-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.header-actions .delete-btn { margin-left: 0; }
+
+/* ── IMPRESSION ── */
+#printArea { display: none; }
+@media print {
+  @page { size: A4; margin: 13mm; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  body > *:not(#printArea) { display: none !important; }
+  #printArea { display: block !important; color: #2b1d20; font-family: 'DM Sans', sans-serif; font-size: 10pt; line-height: 1.4; }
+  .p-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #642B3B; padding-bottom: 8px; margin-bottom: 8px; }
+  .p-head img { height: 20mm; width: auto; }
+  .p-meta { text-align: right; font-size: 9pt; color: #8a6f60; }
+  .p-name { font-family: 'Cormorant Garamond', serif; font-size: 22pt; color: #642B3B; margin: 4px 0 2px; }
+  .ps-title { font-family: 'Cormorant Garamond', serif; font-size: 13pt; font-weight: 500; color: #642B3B; border-bottom: 1px solid #e6d9c9; margin: 12px 0 6px; padding-bottom: 2px; break-after: avoid; }
+  .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 18px; }
+  .pf { break-inside: avoid; margin-bottom: 3px; }
+  .pf.full { grid-column: 1 / -1; }
+  .pl { display: block; font-size: 7.5pt; color: #8a6f60; text-transform: uppercase; letter-spacing: 0.05em; }
+  .pv { display: block; font-size: 10pt; }
+  .p-rdv { border: 1px solid #e6d9c9; border-radius: 6px; padding: 6px 9px; margin-bottom: 7px; break-inside: avoid; }
+  .p-rdv h4 { font-size: 10.5pt; font-weight: 500; color: #642B3B; margin-bottom: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-bottom: 4px; }
+  .chip { border: 1px solid #e6d9c9; border-radius: 10px; padding: 1px 8px; font-size: 8.5pt; }
+  .p-break { break-before: page; }
+  .chart-legend i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .suivi-table { font-size: 8.5pt; }
+  .charts-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .p-photos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .p-photos figure { margin: 0; break-inside: avoid; }
+  .p-photos img { width: 100%; height: 42mm; object-fit: cover; border-radius: 4px; display: block; }
+  .p-photos figcaption { font-size: 7.5pt; color: #654536; margin-top: 2px; }
+  .p-sign { margin-top: 18px; break-inside: avoid; font-size: 9pt; }
+  .sign-row { display: flex; justify-content: space-between; margin-top: 26px; }
+}
 </style>
 </head>
 <body>
@@ -291,6 +338,7 @@ input[type="file"] { display: none; }
 </div>
 
 <div id="modalContainer"></div>
+<div id="printArea"></div>
 <input type="file" id="photoInput" accept="image/*" multiple onchange="handlePhotoUpload(event)">
 
 <script>
@@ -351,7 +399,7 @@ async function selectClient(id) {
         <h2>${currentClient.prenom} ${currentClient.nom}</h2>
         <p>${[currentClient.telephone,currentClient.email].filter(Boolean).join(' · ')||'—'}</p>
       </div>
-      <button class="delete-btn" onclick="confirmDeleteClient()">🗑 Supprimer</button>
+      <div class="header-actions"><button class="delete-btn" onclick="printClient()">🖨 Imprimer</button><button class="delete-btn" onclick="confirmDeleteClient()">🗑 Supprimer</button></div>
     </div>
     <div class="tabs">
       <div class="tab ${currentTab==='infos'?'active':''}" onclick="switchTab('infos',this)">👤 Infos</div>
@@ -929,32 +977,192 @@ function openLightbox(url) {
 }
 
 // ── SUIVI ──
-async function renderSuivi(c) {
-  const { data: rdvs } = await sb.from('rendez_vous').select('*').eq('client_id', currentClient.id).order('date_rdv', {ascending:true});
-  const last4 = (rdvs||[]).slice(-4);
-  const headers = last4.map(r => new Date(r.date_rdv+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'}));
-  while (headers.length < 4) headers.push('—');
+// ── OUTILS COMMUNS ──
+function esc(x) { return String(x === null || x === undefined ? "" : x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function fmtNum(v) { return (Math.round(v * 10) / 10).toString().replace(".", ","); }
+function fmtShortDate(d) { return new Date(d + "T12:00:00").toLocaleDateString("fr-FR", {day: "2-digit", month: "2-digit", year: "2-digit"}); }
+function fmtLong(d) { return new Date(d + "T12:00:00").toLocaleDateString("fr-FR", {day: "2-digit", month: "long", year: "numeric"}); }
+
+// ── SUIVI : TABLEAU + GRAPHIQUES ──
+function suiviTableHtml(rdvs, n, pad) {
+  const last = rdvs.slice(-n);
+  const headers = last.map(r => fmtShortDate(r.date_rdv));
+  if (pad) { while (headers.length < n) headers.push("—"); }
   const rows = [
-    {label:'Poids (kg)', key:'poids'},
-    {label:'Bras G (cm)', key:'bras_g'}, {label:'Bras D (cm)', key:'bras_d'},
-    {label:'Taille (cm)', key:'tour_taille'}, {label:'Hanches (cm)', key:'tour_hanches'},
-    {label:'Cuisse G (cm)', key:'tour_cuisses_g'}, {label:'Cuisse D (cm)', key:'tour_cuisses_d'},
-    {label:'Mollet G (cm)', key:'tour_mollets_g'}, {label:'Mollet D (cm)', key:'tour_mollets_d'},
-    {label:'IMC', key:'imc'}, {label:'Ressenti', key:'ressenti_client'},
+    {label: "Poids (kg)", key: "poids"},
+    {label: "Bras G (cm)", key: "bras_g"}, {label: "Bras D (cm)", key: "bras_d"},
+    {label: "Taille (cm)", key: "tour_taille"}, {label: "Hanches (cm)", key: "tour_hanches"},
+    {label: "Cuisse G (cm)", key: "tour_cuisses_g"}, {label: "Cuisse D (cm)", key: "tour_cuisses_d"},
+    {label: "Mollet G (cm)", key: "tour_mollets_g"}, {label: "Mollet D (cm)", key: "tour_mollets_d"},
+    {label: "IMC", key: "imc"}, {label: "Ressenti", key: "ressenti_client"},
   ];
-  c.innerHTML = `
-    <p class="section-label">Suivi des résultats</p>
-    ${!last4.length ? '<p style="color:var(--text-muted);font-size:13px">Ajoutez des rendez-vous pour voir l\'évolution ici.</p>' : `
-    <div style="overflow-x:auto">
-      <table class="suivi-table">
-        <thead><tr><th>Zone</th>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${rows.map(row=>`
-          <tr><td style="font-weight:500;white-space:nowrap">${row.label}</td>
-          ${headers.map((_,i)=>`<td>${i<last4.length?(last4[i][row.key]||'—'):'—'}</td>`).join('')}</tr>`).join('')}
-        </tbody>
-      </table>
-    </div>`}`;
+  return `<div style="overflow-x:auto"><table class="suivi-table">
+    <thead><tr><th>Zone</th>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(row => `<tr><td style="font-weight:500;white-space:nowrap">${row.label}</td>${headers.map((_, i) => `<td>${i < last.length ? esc(last[i][row.key] || "—") : "—"}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table></div>`;
 }
+
+function lineChart(title, unit, rdvs, series) {
+  const val = (r, s) => { const x = parseFloat(r[s.key]); return isNaN(x) ? null : x; };
+  const pts = rdvs.filter(r => series.some(s => val(r, s) !== null));
+  const legend = series.length > 1 ? `<div class="chart-legend">${series.map(s => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join("")}</div>` : "";
+  const head = `<div class="chart-head"><span class="chart-title">${title}</span>${legend}</div>`;
+  if (!pts.length) return `<div class="chart-card">${head}<div class="chart-empty">Pas encore de données</div></div>`;
+
+  const all = [];
+  pts.forEach(r => series.forEach(s => { const x = val(r, s); if (x !== null) all.push(x); }));
+  let min = Math.min(...all), max = Math.max(...all);
+  if (max - min < 1) { min -= 1; max += 1; }
+  const pad = (max - min) * 0.15; min -= pad; max += pad;
+
+  const W = 480, H = 230, ml = 44, mr = 30, mt = 22, mb = 40, ip = 18;
+  const pw = W - ml - mr, ph = H - mt - mb, n = pts.length;
+  const X = i => n === 1 ? ml + pw / 2 : ml + ip + (i * (pw - 2 * ip)) / (n - 1);
+  const Y = v => mt + ph - ((v - min) / (max - min)) * ph;
+
+  let g = "";
+  for (let t = 0; t <= 4; t++) {
+    const v = min + ((max - min) * t) / 4, y = Y(v);
+    g += `<line x1="${ml}" x2="${W - mr}" y1="${y}" y2="${y}" stroke="#e6d9c9" stroke-width="1"/><text x="${ml - 6}" y="${y + 3.5}" font-size="10" fill="#8a6f60" text-anchor="end">${fmtNum(v)}</text>`;
+  }
+  const m = Math.min(n - 1, 5), labelIdx = new Set();
+  for (let k = 0; k <= m; k++) labelIdx.add(m === 0 ? 0 : Math.round((k * (n - 1)) / m));
+  pts.forEach((r, i) => { if (labelIdx.has(i)) g += `<text x="${X(i)}" y="${H - mb + 16}" font-size="10" fill="#8a6f60" text-anchor="middle">${fmtShortDate(r.date_rdv)}</text>`; });
+
+  series.forEach((s, si) => {
+    const coords = [];
+    pts.forEach((r, i) => { const v = val(r, s); if (v !== null) coords.push({x: X(i), y: Y(v), v: v}); });
+    if (coords.length > 1) g += `<polyline points="${coords.map(c => c.x + "," + c.y).join(" ")}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    coords.forEach(c => {
+      g += `<circle cx="${c.x}" cy="${c.y}" r="3.6" fill="#fff" stroke="${s.color}" stroke-width="2"/>`;
+      if (n <= 8) g += `<text x="${c.x}" y="${si === 0 ? c.y - 9 : c.y + 16}" font-size="10" fill="${s.color}" text-anchor="middle">${fmtNum(c.v)}</text>`;
+    });
+  });
+
+  const deltas = series.map(s => {
+    const vs = pts.map(r => val(r, s)).filter(v => v !== null);
+    if (vs.length < 2) return null;
+    const d = vs[vs.length - 1] - vs[0];
+    const sign = d > 0 ? "+" : (d < 0 ? "−" : "");
+    return (series.length > 1 ? s.name + " " : "") + sign + fmtNum(Math.abs(d)) + " " + unit;
+  }).filter(Boolean);
+  const delta = deltas.length
+    ? `<div class="chart-delta">Depuis le premier rendez-vous : ${deltas.join(" · ")}</div>`
+    : `<div class="chart-delta" style="color:var(--text-muted)">Ajoutez un autre rendez-vous pour voir la courbe.</div>`;
+  return `<div class="chart-card">${head}<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">${g}</svg>${delta}</div>`;
+}
+
+function chartsHtml(rdvs) {
+  const A = "#642B3B", B = "#C08A4B";
+  return `<div class="charts-grid">`
+    + lineChart("Poids (kg)", "kg", rdvs, [{name: "Poids", key: "poids", color: A}])
+    + lineChart("Tour de taille (cm)", "cm", rdvs, [{name: "Taille", key: "tour_taille", color: A}])
+    + lineChart("Hanches (cm)", "cm", rdvs, [{name: "Hanches", key: "tour_hanches", color: A}])
+    + lineChart("Cuisses (cm)", "cm", rdvs, [{name: "G", key: "tour_cuisses_g", color: A}, {name: "D", key: "tour_cuisses_d", color: B}])
+    + lineChart("Bras (cm)", "cm", rdvs, [{name: "G", key: "bras_g", color: A}, {name: "D", key: "bras_d", color: B}])
+    + `</div>`;
+}
+
+async function renderSuivi(c) {
+  const { data } = await sb.from("rendez_vous").select("*").eq("client_id", currentClient.id).order("date_rdv", {ascending: true});
+  const rdvs = data || [];
+  c.innerHTML = `<p class="section-label">Suivi des résultats</p>`
+    + (!rdvs.length
+      ? `<p style="color:var(--text-muted);font-size:13px">Ajoutez des rendez-vous pour voir l'évolution ici.</p>`
+      : suiviTableHtml(rdvs, 4, true)
+        + `<p class="section-label" style="margin-top:1.75rem">Évolution des mesures</p>`
+        + chartsHtml(rdvs));
+}
+
+// ── IMPRESSION DE LA FICHE CLIENT ──
+const P_FULL = new Set(["hygiene_vie", "detente", "ressenti_general", "tentatives_precedentes", "raffermissement", "exemples_aliments", "tabac_methodes", "tabac_resultats", "declencheur", "resultats_attendus", "duree_probleme", "facteur_declencheur", "zones_preoccupantes", "actions_maison", "ressenti_peau", "blocage"]);
+const P_BESOINS = [["Ce qui a déclenché la prise de RDV", "declencheur"], ["Résultats attendus", "resultats_attendus"], ["Depuis combien de temps", "duree_probleme"], ["Facteur déclencheur", "facteur_declencheur"], ["Zones qui préoccupent", "zones_preoccupantes"], ["Actions à la maison", "actions_maison"], ["Ressenti de la peau", "ressenti_peau"], ["Ressent", "blocage"], ["Tentatives précédentes", "tentatives_precedentes"]];
+const P_ATTENTES = [["Amincissement souhaité", "type_amincissement"], ["Souhaite", "souhait_silhouette"], ["Zones à raffermir / tonifier", "raffermissement"], ["Taille pantalon", "taille_pantalon"], ["Taille jupe", "taille_jupe"], ["Taille robe", "taille_robe"], ["Taille souhaitée", "taille_souhaitee"]];
+const P_ALIM = [["Hygiène de vie", "hygiene_vie"], ["Activité physique", "sport_oui"], ["Laquelle", "sport_type"], ["Fréquence", "sport_freq"], ["Régime particulier", "regime_oui"], ["Lequel", "regime_type"], ["1,5 L d'eau par jour", "eau"], ["Grignotage", "grignotage"], ["À quelle(s) heure(s)", "grignotage_heure"], ["Appétit excessif aux repas", "appetit"], ["Attirance pour les aliments", "attirance"], ["Exemples", "exemples_aliments"]];
+const P_POIDS = [["Prise de poids", "prise_poids"], ["Kilos pris", "kilos_pris"], ["Depuis quand", "depuis_quand"], ["Poids actuel (kg)", "poids_actuel"], ["Poids souhaité (kg)", "poids_souhaite"], ["Taille (m)", "taille_m"], ["IMC actuel", "imc_actuel"], ["IMC souhaité", "imc_souhaite"]];
+const P_SANTE = [["Tendance à gonfler", "gonfler"], ["À quel moment", "gonfler_moment"], ["Transpiration facile", "transpiration"], ["Cellulite", "cellulite"], ["À quel niveau", "cellulite_niveau"], ["Troubles circulatoires", "troubles_circu"], ["Maladie grave", "maladie_grave"], ["Maladie cardiaque", "maladie_cardiaque"], ["Troubles épileptiques", "epilepsie"], ["Hypertension", "hypertension"], ["Stérilet", "sterilet"], ["Enceinte", "enceinte"]];
+const P_BIENETRE = [["Anxiété", "anxieux"], ["Troubles de l'humeur", "troubles_humeur"], ["Troubles du sommeil", "troubles_sommeil"], ["Troubles du transit", "troubles_transit"], ["Bouffées de chaleur", "bouffees_chaleur"], ["Migraines / céphalées", "migraines"], ["Cauchemars", "cauchemars"], ["Fume", "tabac"], ["A déjà essayé d'arrêter", "tabac_arret"], ["Méthodes", "tabac_methodes"], ["Résultats", "tabac_resultats"], ["Massages en institut", "massage_institut"], ["Fréquence", "massage_freq"], ["Détente au quotidien", "detente"], ["Comment se sent la cliente en ce moment", "ressenti_general"]];
+
+function ageFrom(dob) {
+  if (!dob) return "";
+  const d = new Date(dob + "T12:00:00"), t = new Date();
+  let a = t.getFullYear() - d.getFullYear();
+  const m = t.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
+  return a + " ans";
+}
+
+function keyPairs(list, cl) { return list.map(([lab, key]) => [lab, cl[key], P_FULL.has(key)]); }
+
+function pBlock(title, pairs) {
+  const inner = pairs.map(([lab, v, full]) => (v === null || v === undefined || v === "") ? "" : `<div class="pf${full ? " full" : ""}"><span class="pl">${esc(lab)}</span><span class="pv">${esc(v)}</span></div>`).join("");
+  return inner ? `<h3 class="ps-title">${title}</h3><div class="pgrid">${inner}</div>` : "";
+}
+
+function pRdv(r) {
+  const chip = (l, v, u) => (v === null || v === undefined || v === "") ? "" : `<span class="chip"><b>${l}</b> ${esc(fmtNum(parseFloat(v)))}${u ? " " + u : ""}</span>`;
+  const txt = (l, v) => v ? `<div class="pf full"><span class="pl">${l}</span><span class="pv">${esc(v)}</span></div>` : "";
+  return `<div class="p-rdv"><h4>${fmtLong(r.date_rdv)}${r.praticienne ? " — " + esc(r.praticienne) : ""}</h4>
+    <div class="chips">${chip("Poids", r.poids, "kg")}${chip("IMC", r.imc)}${chip("Taille", r.tour_taille, "cm")}${chip("Hanches", r.tour_hanches, "cm")}${chip("Bras G", r.bras_g, "cm")}${chip("Bras D", r.bras_d, "cm")}${chip("Cuisse G", r.tour_cuisses_g, "cm")}${chip("Cuisse D", r.tour_cuisses_d, "cm")}${chip("Mollet G", r.tour_mollets_g, "cm")}${chip("Mollet D", r.tour_mollets_d, "cm")}${chip("Écartement", r.ecartement_jambes, "cm")}</div>
+    <div class="pgrid">${txt("Commentaires bras", r.commentaire_bras)}${txt("Commentaires taille", r.commentaire_taille)}${txt("Commentaires hanches", r.commentaire_hanches)}${txt("Commentaires cuisses", r.commentaire_cuisses)}${txt("Commentaires mollets / écartement", r.commentaire_mollets)}${txt("Soins effectués", r.soins_effectues)}${txt("Soins préconisés", r.soins_preconises)}${txt("Ressenti client", r.ressenti_client)}${txt("Observations", r.observations)}</div></div>`;
+}
+
+function pPhotos(photos) {
+  if (!photos.length) return "";
+  return `<h3 class="ps-title">Photos</h3><div class="p-photos">${photos.map(p => {
+    const d = p.created_at ? new Date(p.created_at).toLocaleDateString("fr-FR") : "";
+    const rd = (p.rendez_vous && p.rendez_vous.date_rdv) ? "Rdv du " + fmtShortDate(p.rendez_vous.date_rdv) : "Fiche client";
+    return `<figure><img src="${esc(p.url)}" alt=""><figcaption>${p.titre ? "<b>" + esc(p.titre) + "</b><br>" : ""}${d} · ${rd}${p.commentaire ? "<br>" + esc(p.commentaire) : ""}</figcaption></figure>`;
+  }).join("")}</div>`;
+}
+
+function buildPrintHtml(cl, rdvs, photos) {
+  const logo = document.querySelector(".brand-logo").src;
+  const today = new Date().toLocaleDateString("fr-FR", {day: "2-digit", month: "long", year: "numeric"});
+  const adresse = [cl.adresse, [cl.code_postal, cl.ville].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const enfants = [cl.nb_enfants, cl.age_enfants ? "âge(s) : " + cl.age_enfants : ""].filter(x => x !== null && x !== undefined && x !== "").join(" — ");
+  const ident = [
+    ["Date de naissance", cl.date_naissance ? fmtLong(cl.date_naissance) + " (" + ageFrom(cl.date_naissance) + ")" : ""],
+    ["Téléphone", cl.telephone], ["E-mail", cl.email], ["Adresse", adresse],
+    ["Profession", cl.profession], ["Situation familiale", cl.situation_familiale],
+    ["Enfants", enfants], ["Comment nous a connu", cl.comment_connu],
+  ];
+  return `<div class="p-head"><img src="${logo}" alt="Le Spa"><div class="p-meta">Bilan Minceur — fiche client<br>Imprimée le ${today}</div></div>
+    <div class="p-name">${esc(cl.prenom)} ${esc(cl.nom)}</div>
+    ${pBlock("Informations personnelles", ident)}
+    ${pBlock("Vos besoins", keyPairs(P_BESOINS, cl))}
+    ${pBlock("Vos attentes", keyPairs(P_ATTENTES, cl))}
+    ${pBlock("Comportement alimentaire", keyPairs(P_ALIM, cl))}
+    ${pBlock("Le poids", keyPairs(P_POIDS, cl))}
+    ${pBlock("Habitudes et précautions", keyPairs(P_SANTE, cl))}
+    ${pBlock("Bilan bien-être / équilibre", keyPairs(P_BIENETRE, cl))}
+    ${pBlock("Remarques particulières", [["Notes", cl.notes_initiales, true]])}
+    ${rdvs.length ? `<h3 class="ps-title">Rendez-vous</h3>${rdvs.map(pRdv).join("")}` : ""}
+    ${rdvs.length ? `<div class="p-break"></div><h3 class="ps-title">Suivi des résultats</h3>${suiviTableHtml(rdvs, 6, false)}<h3 class="ps-title">Évolution des mesures</h3>${chartsHtml(rdvs)}` : ""}
+    ${pPhotos(photos)}
+    <div class="p-sign"><div>Autorisation d'utiliser les photos et résultats à des fins de suivi et de communication (anonymat garanti) : <b>${esc(cl.autorisation_photos || "—")}</b></div><div class="sign-row"><span>Date :</span><span>Signature du client :</span></div></div>`;
+}
+
+function waitForImages(root) {
+  const imgs = Array.from(root.querySelectorAll("img"));
+  const loaded = Promise.all(imgs.map(im => im.complete ? Promise.resolve() : new Promise(res => { im.onload = res; im.onerror = res; })));
+  return Promise.race([loaded, new Promise(res => setTimeout(res, 6000))]);
+}
+
+async function printClient() {
+  if (!currentClient) return;
+  showToast("Préparation de l'impression...");
+  const cl = currentClient;
+  const [r1, r2] = await Promise.all([
+    sb.from("rendez_vous").select("*").eq("client_id", cl.id).order("date_rdv", {ascending: true}),
+    sb.from("photos").select("*, rendez_vous(date_rdv)").eq("client_id", cl.id).order("created_at", {ascending: true}),
+  ]);
+  const area = document.getElementById("printArea");
+  area.innerHTML = buildPrintHtml(cl, r1.data || [], r2.data || []);
+  await waitForImages(area);
+  window.print();
+}
+window.addEventListener("afterprint", () => { const a = document.getElementById("printArea"); if (a) a.innerHTML = ""; });
 
 // ── NOTES ──
 function renderNotes(c) {
