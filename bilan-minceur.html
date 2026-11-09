@@ -235,35 +235,49 @@ input[type="file"] { display: none; }
 
 /* ── IMPRESSION ── */
 #printArea { display: none; }
+.save-status { position: fixed; right: 1rem; bottom: 1rem; background: #fff; border: 1px solid var(--border); color: var(--text-muted); font-size: 12px; padding: 6px 12px; border-radius: 16px; z-index: 998; opacity: 0; transition: opacity 0.2s; pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.save-status.show { opacity: 1; }
+.save-status.ok { color: #3f7a4f; border-color: #cfe3d4; }
+.save-status.err { color: #a32035; border-color: #f0c9d0; }
+.autosave-note { margin-top: 1.1rem; font-size: 12px; color: var(--text-muted); }
 @media print {
-  @page { size: A4; margin: 13mm; }
+  @page { size: A4; margin: 12mm 13mm; }
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
   body > *:not(#printArea) { display: none !important; }
-  #printArea { display: block !important; color: #2b1d20; font-family: 'DM Sans', sans-serif; font-size: 10pt; line-height: 1.4; }
-  .p-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #642B3B; padding-bottom: 8px; margin-bottom: 8px; }
-  .p-head img { height: 20mm; width: auto; }
-  .p-meta { text-align: right; font-size: 9pt; color: #8a6f60; }
-  .p-name { font-family: 'Cormorant Garamond', serif; font-size: 22pt; color: #642B3B; margin: 4px 0 2px; }
-  .ps-title { font-family: 'Cormorant Garamond', serif; font-size: 13pt; font-weight: 500; color: #642B3B; border-bottom: 1px solid #e6d9c9; margin: 12px 0 6px; padding-bottom: 2px; break-after: avoid; }
-  .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 18px; }
-  .pf { break-inside: avoid; margin-bottom: 3px; }
+  #printArea, #printArea * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #printArea { display: block !important; color: #2b1d20; font-family: 'DM Sans', sans-serif; font-size: 9.5pt; line-height: 1.35; }
+  .p-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; border-bottom: 2px solid #642B3B; margin-bottom: 6px; }
+  .p-head img { height: 17mm; width: auto; }
+  .p-meta { text-align: right; font-size: 8.5pt; color: #8a6f60; }
+  .p-doc { font-family: 'Cormorant Garamond', serif; font-size: 17pt; color: #642B3B; line-height: 1.1; }
+  .p-name { font-family: 'Cormorant Garamond', serif; font-size: 21pt; font-weight: 500; color: #642B3B; margin: 2px 0 0; }
+  .p-sec { break-inside: avoid; }
+  .p-avoid { break-inside: avoid; }
+  .ps-title { font-family: 'Cormorant Garamond', serif; font-size: 12.5pt; font-weight: 600; color: #642B3B; background: #f3eadf; border-left: 3px solid #642B3B; padding: 2px 8px; margin: 10px 0 6px; break-after: avoid; }
+  .pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px 14px; }
+  .pf { break-inside: avoid; }
   .pf.full { grid-column: 1 / -1; }
-  .pl { display: block; font-size: 7.5pt; color: #8a6f60; text-transform: uppercase; letter-spacing: 0.05em; }
-  .pv { display: block; font-size: 10pt; }
-  .p-rdv { border: 1px solid #e6d9c9; border-radius: 6px; padding: 6px 9px; margin-bottom: 7px; break-inside: avoid; }
-  .p-rdv h4 { font-size: 10.5pt; font-weight: 500; color: #642B3B; margin-bottom: 4px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-bottom: 4px; }
-  .chip { border: 1px solid #e6d9c9; border-radius: 10px; padding: 1px 8px; font-size: 8.5pt; }
-  .p-break { break-before: page; }
-  .chart-legend i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .suivi-table { font-size: 8.5pt; }
-  .charts-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .p-photos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .p-photos figure { margin: 0; break-inside: avoid; }
-  .p-photos img { width: 100%; height: 42mm; object-fit: cover; border-radius: 4px; display: block; }
-  .p-photos figcaption { font-size: 7.5pt; color: #654536; margin-top: 2px; }
-  .p-sign { margin-top: 18px; break-inside: avoid; font-size: 9pt; }
-  .sign-row { display: flex; justify-content: space-between; margin-top: 26px; }
+  .pl { display: block; font-size: 7pt; color: #8a6f60; text-transform: uppercase; letter-spacing: 0.05em; }
+  .pv { display: block; font-size: 9.5pt; }
+  .p-rdv { border: 1px solid #e6d9c9; border-radius: 6px; padding: 5px 9px; margin-bottom: 6px; break-inside: avoid; }
+  .p-rdv h4 { font-size: 10pt; font-weight: 600; color: #642B3B; margin-bottom: 3px; }
+  .p-rdv h4 span { font-weight: 400; color: #654536; }
+  .chips { display: flex; flex-wrap: wrap; gap: 3px 5px; margin-bottom: 3px; }
+  .chip { background: #f3eadf; border-radius: 10px; padding: 1px 8px; font-size: 8pt; }
+  .suivi-table { font-size: 8pt; width: 100%; }
+  .suivi-table th, .suivi-table td { padding: 2px 6px; }
+  .chart-card svg { max-height: 35mm; }
+  .p-rdvs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .p-rdvs .p-rdv { margin-bottom: 0; }
+  .suivi-table th { background: #f3eadf; }
+  .charts-grid { grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+  .chart-card { padding: 5px 8px; break-inside: avoid; }
+  .chart-title { font-size: 9pt; }
+  .chart-legend { font-size: 8pt; }
+  .chart-delta { font-size: 8pt; }
+  .p-sign { margin-top: 10px; padding: 7px 10px; border: 1px solid #e6d9c9; border-radius: 6px; break-inside: avoid; font-size: 8.5pt; }
+  .sign-row { display: flex; justify-content: space-between; margin-top: 22px; }
+  .p-foot { margin-top: 6px; text-align: center; font-size: 7.5pt; color: #8a6f60; border-top: 1px solid #e6d9c9; padding-top: 4px; }
 }
 </style>
 </head>
@@ -339,6 +353,7 @@ input[type="file"] { display: none; }
 
 <div id="modalContainer"></div>
 <div id="printArea"></div>
+<div id="saveStatus" class="save-status"></div>
 <input type="file" id="photoInput" accept="image/*" multiple onchange="handlePhotoUpload(event)">
 
 <script>
@@ -386,6 +401,7 @@ function filterClients() {
 }
 
 async function selectClient(id) {
+  flushAutosave();
   currentClient = clients.find(c => c.id === id);
   renderClientList(clients);
   closeSidebar();
@@ -415,6 +431,7 @@ async function selectClient(id) {
 }
 
 function switchTab(tab, el) {
+  flushAutosave();
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
@@ -457,7 +474,7 @@ function renderInfos(c) {
       <div class="field"><label>Âge des enfants</label><input id="f_age_enfants" value="${cl.age_enfants||''}"></div>
       <div class="field full"><label>Comment nous avez-vous connu ?</label><input id="f_connu" value="${cl.comment_connu||''}"></div>
     </div>
-    <button class="save-btn" onclick="saveInfos()">💾 Enregistrer</button>
+    <p class="autosave-note">✓ Les modifications sont enregistrées automatiquement.</p>
     <p class="section-label" style="margin-top:1.5rem">Toutes les photos du client</p>
     <div class="photos-grid" id="photogrid-all-${cl.id}">
       <div class="photo-add" onclick="triggerPhotoUpload('client','${cl.id}')">+</div>
@@ -466,6 +483,7 @@ function renderInfos(c) {
 }
 
 async function saveInfos() {
+  const target = currentClient;
   const updates = {
     prenom: v('f_prenom'), nom: v('f_nom'), date_naissance: v('f_dob')||null,
     telephone: v('f_tel'), email: v('f_email'), adresse: v('f_adresse'),
@@ -473,9 +491,8 @@ async function saveInfos() {
     situation_familiale: v('f_situation'), nb_enfants: v('f_nb_enfants')||null,
     age_enfants: v('f_age_enfants'), comment_connu: v('f_connu'),
   };
-  const { error } = await sb.from('clients').update(updates).eq('id', currentClient.id);
-  if (!error) { Object.assign(currentClient, updates); await loadClients(); showToast('Fiche enregistrée ✓'); }
-  else alert('Erreur : ' + error.message);
+  if (!updates.prenom.trim() || !updates.nom.trim()) { setSaveStatus("incomplete"); return; }
+  await saveClientFields(updates, target);
 }
 
 // ── PHOTO CARD ──
@@ -665,11 +682,12 @@ function renderBesoins(c) {
       <div class="field"><label>Taille robe actuelle</label><input id="f_taille_robe" value="${cl.taille_robe||''}"></div>
       <div class="field"><label>Taille souhaitée</label><input id="f_taille_souhaitee" value="${cl.taille_souhaitee||''}"></div>
     </div>
-    <button class="save-btn" onclick="saveBesoins()">💾 Enregistrer</button>`;
+    <p class="autosave-note">✓ Les modifications sont enregistrées automatiquement.</p>`;
   rb('type_amincissement', cl.type_amincissement||'');
 }
 
 async function saveBesoins() {
+  const target = currentClient;
   const souhait = [];
   if (document.getElementById('raff_raffermir')?.checked) souhait.push('Raffermir');
   if (document.getElementById('raff_tonifier')?.checked) souhait.push('Tonifier');
@@ -691,9 +709,7 @@ async function saveBesoins() {
     taille_robe: v('f_taille_robe'),
     taille_souhaitee: v('f_taille_souhaitee'),
   };
-  const { error } = await sb.from('clients').update(updates).eq('id', currentClient.id);
-  if (!error) { Object.assign(currentClient, updates); showToast('Enregistré ✓'); }
-  else alert('Erreur : ' + error.message);
+  await saveClientFields(updates, target);
 }
 
 // ── ALIMENTATION ──
@@ -740,10 +756,11 @@ function renderAlim(c) {
       <div class="field"><label>IMC actuel</label><input type="number" step="0.1" id="f_imc_actuel" value="${cl.imc_actuel||''}"></div>
       <div class="field"><label>IMC souhaité</label><input type="number" step="0.1" id="f_imc_souhaite" value="${cl.imc_souhaite||''}"></div>
     </div>
-    <button class="save-btn" onclick="saveAlim()">💾 Enregistrer</button>`;
+    <p class="autosave-note">✓ Les modifications sont enregistrées automatiquement.</p>`;
 }
 
 async function saveAlim() {
+  const target = currentClient;
   const attirances = [];
   if (document.getElementById('attr_sucres')?.checked) attirances.push('Sucrés');
   if (document.getElementById('attr_sales')?.checked) attirances.push('Salés');
@@ -757,9 +774,7 @@ async function saveAlim() {
     poids_actuel: v('f_poids_actuel')||null, poids_souhaite: v('f_poids_souhaite')||null,
     taille_m: v('f_taille_m')||null, imc_actuel: v('f_imc_actuel')||null, imc_souhaite: v('f_imc_souhaite')||null,
   };
-  const { error } = await sb.from('clients').update(updates).eq('id', currentClient.id);
-  if (!error) { Object.assign(currentClient, updates); showToast('Enregistré ✓'); }
-  else alert('Erreur : ' + error.message);
+  await saveClientFields(updates, target);
 }
 
 // ── SANTE ──
@@ -810,10 +825,11 @@ function renderSante(c) {
         ${on('autorisation_photos',cl.autorisation_photos)}
       </div>
     </div>
-    <button class="save-btn" onclick="saveSante()">💾 Enregistrer</button>`;
+    <p class="autosave-note">✓ Les modifications sont enregistrées automatiquement.</p>`;
 }
 
 async function saveSante() {
+  const target = currentClient;
   const fields = ['gonfler','transpiration','cellulite','troubles_circu','maladie_grave',
     'maladie_cardiaque','epilepsie','hypertension','sterilet','enceinte','anxieux',
     'troubles_humeur','troubles_sommeil','troubles_transit','bouffees_chaleur','migraines',
@@ -825,9 +841,7 @@ async function saveSante() {
     tabac_methodes: v('f_tabac_methodes'), tabac_resultats: v('f_tabac_resultats'),
     massage_freq: v('f_massage_freq'), detente: v('f_detente'), ressenti_general: v('f_ressenti_general'),
   });
-  const { error } = await sb.from('clients').update(updates).eq('id', currentClient.id);
-  if (!error) { Object.assign(currentClient, updates); showToast('Enregistré ✓'); }
-  else alert('Erreur : ' + error.message);
+  await saveClientFields(updates, target);
 }
 
 // ── RDV ──
@@ -977,6 +991,68 @@ function openLightbox(url) {
 }
 
 // ── SUIVI ──
+// ── ENREGISTREMENT AUTOMATIQUE ──
+const AUTOSAVE_TABS = ["infos", "besoins", "alim", "sante", "notes"];
+let autosaveTimer = null, saveStatusTimer = null;
+
+function setSaveStatus(kind) {
+  const el = document.getElementById("saveStatus");
+  if (!el) return;
+  clearTimeout(saveStatusTimer);
+  const map = {
+    saving: ["Enregistrement…", ""],
+    saved: ["✓ Enregistré", "ok"],
+    error: ["⚠ Échec de l'enregistrement — vérifiez la connexion", "err"],
+    incomplete: ["Nom et prénom obligatoires pour enregistrer", "err"],
+  };
+  el.textContent = map[kind][0];
+  el.className = "save-status show " + map[kind][1];
+  if (kind === "saved") saveStatusTimer = setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+async function saveClientFields(updates, target) {
+  setSaveStatus("saving");
+  const { error } = await sb.from("clients").update(updates).eq("id", target.id);
+  if (error) { console.error(error); setSaveStatus("error"); return false; }
+  Object.assign(target, updates);
+  if (target === currentClient) refreshHeader();
+  setSaveStatus("saved");
+  return true;
+}
+
+function refreshHeader() {
+  const cl = currentClient, h = document.querySelector(".client-header");
+  if (!h || !cl) return;
+  h.querySelector(".avatar-lg").textContent = initials(cl.nom, cl.prenom);
+  h.querySelector("h2").textContent = cl.prenom + " " + cl.nom;
+  h.querySelector("p").textContent = [cl.telephone, cl.email].filter(Boolean).join(" · ") || "—";
+  filterClients();
+}
+
+function autosaveNow() {
+  autosaveTimer = null;
+  if (!currentClient) return Promise.resolve();
+  const fn = {infos: saveInfos, besoins: saveBesoins, alim: saveAlim, sante: saveSante, notes: saveNotes}[currentTab];
+  return fn ? fn() : Promise.resolve();
+}
+
+function flushAutosave() {
+  if (!autosaveTimer) return Promise.resolve();
+  clearTimeout(autosaveTimer);
+  return autosaveNow();
+}
+
+function onFieldEdit(e) {
+  if (!currentClient || !AUTOSAVE_TABS.includes(currentTab)) return;
+  const t = e.target;
+  if (!t || !t.closest || !t.closest("#tabContent") || t.closest(".photo-item")) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(autosaveNow, 800);
+}
+document.addEventListener("input", onFieldEdit);
+document.addEventListener("change", onFieldEdit);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAutosave(); });
+
 // ── OUTILS COMMUNS ──
 function esc(x) { return String(x === null || x === undefined ? "" : x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function fmtNum(v) { return (Math.round(v * 10) / 10).toString().replace(".", ","); }
@@ -994,8 +1070,9 @@ function suiviTableHtml(rdvs, n, pad) {
     {label: "Taille (cm)", key: "tour_taille"}, {label: "Hanches (cm)", key: "tour_hanches"},
     {label: "Cuisse G (cm)", key: "tour_cuisses_g"}, {label: "Cuisse D (cm)", key: "tour_cuisses_d"},
     {label: "Mollet G (cm)", key: "tour_mollets_g"}, {label: "Mollet D (cm)", key: "tour_mollets_d"},
+    {label: "Écartement jambes (cm)", key: "ecartement_jambes", optional: true},
     {label: "IMC", key: "imc"}, {label: "Ressenti", key: "ressenti_client"},
-  ];
+  ].filter(r => !r.optional || last.some(x => x[r.key]));
   return `<div style="overflow-x:auto"><table class="suivi-table">
     <thead><tr><th>Zone</th>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(row => `<tr><td style="font-weight:500;white-space:nowrap">${row.label}</td>${headers.map((_, i) => `<td>${i < last.length ? esc(last[i][row.key] || "—") : "—"}</td>`).join("")}</tr>`).join("")}</tbody>
@@ -1096,38 +1173,31 @@ function keyPairs(list, cl) { return list.map(([lab, key]) => [lab, cl[key], P_F
 
 function pBlock(title, pairs) {
   const inner = pairs.map(([lab, v, full]) => (v === null || v === undefined || v === "") ? "" : `<div class="pf${full ? " full" : ""}"><span class="pl">${esc(lab)}</span><span class="pv">${esc(v)}</span></div>`).join("");
-  return inner ? `<h3 class="ps-title">${title}</h3><div class="pgrid">${inner}</div>` : "";
+  return inner ? `<section class="p-sec"><h3 class="ps-title">${title}</h3><div class="pgrid">${inner}</div></section>` : "";
+}
+
+function pRdvHasText(r) {
+  return !!(r.commentaire_bras || r.commentaire_taille || r.commentaire_hanches || r.commentaire_cuisses || r.commentaire_mollets || r.soins_effectues || r.soins_preconises || r.ressenti_client || r.observations);
 }
 
 function pRdv(r) {
-  const chip = (l, v, u) => (v === null || v === undefined || v === "") ? "" : `<span class="chip"><b>${l}</b> ${esc(fmtNum(parseFloat(v)))}${u ? " " + u : ""}</span>`;
   const txt = (l, v) => v ? `<div class="pf full"><span class="pl">${l}</span><span class="pv">${esc(v)}</span></div>` : "";
-  return `<div class="p-rdv"><h4>${fmtLong(r.date_rdv)}${r.praticienne ? " — " + esc(r.praticienne) : ""}</h4>
-    <div class="chips">${chip("Poids", r.poids, "kg")}${chip("IMC", r.imc)}${chip("Taille", r.tour_taille, "cm")}${chip("Hanches", r.tour_hanches, "cm")}${chip("Bras G", r.bras_g, "cm")}${chip("Bras D", r.bras_d, "cm")}${chip("Cuisse G", r.tour_cuisses_g, "cm")}${chip("Cuisse D", r.tour_cuisses_d, "cm")}${chip("Mollet G", r.tour_mollets_g, "cm")}${chip("Mollet D", r.tour_mollets_d, "cm")}${chip("Écartement", r.ecartement_jambes, "cm")}</div>
-    <div class="pgrid">${txt("Commentaires bras", r.commentaire_bras)}${txt("Commentaires taille", r.commentaire_taille)}${txt("Commentaires hanches", r.commentaire_hanches)}${txt("Commentaires cuisses", r.commentaire_cuisses)}${txt("Commentaires mollets / écartement", r.commentaire_mollets)}${txt("Soins effectués", r.soins_effectues)}${txt("Soins préconisés", r.soins_preconises)}${txt("Ressenti client", r.ressenti_client)}${txt("Observations", r.observations)}</div></div>`;
+  return `<div class="p-rdv"><h4>${fmtLong(r.date_rdv)}${r.praticienne ? "<span> — " + esc(r.praticienne) + "</span>" : ""}</h4>
+    <div class="pgrid">${txt("Soins effectués", r.soins_effectues)}${txt("Soins préconisés", r.soins_preconises)}${txt("Ressenti client", r.ressenti_client)}${txt("Observations", r.observations)}${txt("Commentaires bras", r.commentaire_bras)}${txt("Commentaires taille", r.commentaire_taille)}${txt("Commentaires hanches", r.commentaire_hanches)}${txt("Commentaires cuisses", r.commentaire_cuisses)}${txt("Commentaires mollets / écartement", r.commentaire_mollets)}</div></div>`;
 }
 
-function pPhotos(photos) {
-  if (!photos.length) return "";
-  return `<h3 class="ps-title">Photos</h3><div class="p-photos">${photos.map(p => {
-    const d = p.created_at ? new Date(p.created_at).toLocaleDateString("fr-FR") : "";
-    const rd = (p.rendez_vous && p.rendez_vous.date_rdv) ? "Rdv du " + fmtShortDate(p.rendez_vous.date_rdv) : "Fiche client";
-    return `<figure><img src="${esc(p.url)}" alt=""><figcaption>${p.titre ? "<b>" + esc(p.titre) + "</b><br>" : ""}${d} · ${rd}${p.commentaire ? "<br>" + esc(p.commentaire) : ""}</figcaption></figure>`;
-  }).join("")}</div>`;
-}
-
-function buildPrintHtml(cl, rdvs, photos) {
+function buildPrintHtml(cl, rdvs) {
   const logo = document.querySelector(".brand-logo").src;
   const today = new Date().toLocaleDateString("fr-FR", {day: "2-digit", month: "long", year: "numeric"});
   const adresse = [cl.adresse, [cl.code_postal, cl.ville].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   const enfants = [cl.nb_enfants, cl.age_enfants ? "âge(s) : " + cl.age_enfants : ""].filter(x => x !== null && x !== undefined && x !== "").join(" — ");
   const ident = [
     ["Date de naissance", cl.date_naissance ? fmtLong(cl.date_naissance) + " (" + ageFrom(cl.date_naissance) + ")" : ""],
-    ["Téléphone", cl.telephone], ["E-mail", cl.email], ["Adresse", adresse],
+    ["Téléphone", cl.telephone], ["E-mail", cl.email], ["Adresse", adresse, true],
     ["Profession", cl.profession], ["Situation familiale", cl.situation_familiale],
     ["Enfants", enfants], ["Comment nous a connu", cl.comment_connu],
   ];
-  return `<div class="p-head"><img src="${logo}" alt="Le Spa"><div class="p-meta">Bilan Minceur — fiche client<br>Imprimée le ${today}</div></div>
+  return `<div class="p-head"><img src="${logo}" alt="Le Spa"><div class="p-meta"><div class="p-doc">Bilan Minceur</div>Fiche client · imprimée le ${today}</div></div>
     <div class="p-name">${esc(cl.prenom)} ${esc(cl.nom)}</div>
     ${pBlock("Informations personnelles", ident)}
     ${pBlock("Vos besoins", keyPairs(P_BESOINS, cl))}
@@ -1137,10 +1207,10 @@ function buildPrintHtml(cl, rdvs, photos) {
     ${pBlock("Habitudes et précautions", keyPairs(P_SANTE, cl))}
     ${pBlock("Bilan bien-être / équilibre", keyPairs(P_BIENETRE, cl))}
     ${pBlock("Remarques particulières", [["Notes", cl.notes_initiales, true]])}
-    ${rdvs.length ? `<h3 class="ps-title">Rendez-vous</h3>${rdvs.map(pRdv).join("")}` : ""}
-    ${rdvs.length ? `<div class="p-break"></div><h3 class="ps-title">Suivi des résultats</h3>${suiviTableHtml(rdvs, 6, false)}<h3 class="ps-title">Évolution des mesures</h3>${chartsHtml(rdvs)}` : ""}
-    ${pPhotos(photos)}
-    <div class="p-sign"><div>Autorisation d'utiliser les photos et résultats à des fins de suivi et de communication (anonymat garanti) : <b>${esc(cl.autorisation_photos || "—")}</b></div><div class="sign-row"><span>Date :</span><span>Signature du client :</span></div></div>`;
+    ${rdvs.length ? `<section class="p-flow"><h3 class="ps-title">Suivi des résultats</h3><div class="p-avoid">${suiviTableHtml(rdvs, 8, false)}</div><h3 class="ps-title">Évolution des mesures</h3>${chartsHtml(rdvs)}</section>` : ""}
+    ${rdvs.some(pRdvHasText) ? `<section class="p-flow"><h3 class="ps-title">Soins et observations</h3><div class="p-rdvs">${rdvs.filter(pRdvHasText).map(pRdv).join("")}</div></section>` : ""}
+    <div class="p-sign"><div>Autorisation d'utiliser les photos et résultats à des fins de suivi et de communication (anonymat garanti) : <b>${esc(cl.autorisation_photos || "—")}</b></div><div class="sign-row"><span>Date :</span><span>Signature du client :</span></div></div>
+    <div class="p-foot">Le Spa — Créateur du mieux être · 8 Boulevard du Grand Pré des Bordes, 58000 Nevers · 03 86 21 48 24 · www.le-spa-nevers.com</div>`;
 }
 
 function waitForImages(root) {
@@ -1151,14 +1221,12 @@ function waitForImages(root) {
 
 async function printClient() {
   if (!currentClient) return;
+  await flushAutosave();
   showToast("Préparation de l'impression...");
   const cl = currentClient;
-  const [r1, r2] = await Promise.all([
-    sb.from("rendez_vous").select("*").eq("client_id", cl.id).order("date_rdv", {ascending: true}),
-    sb.from("photos").select("*, rendez_vous(date_rdv)").eq("client_id", cl.id).order("created_at", {ascending: true}),
-  ]);
+  const { data } = await sb.from("rendez_vous").select("*").eq("client_id", cl.id).order("date_rdv", {ascending: true});
   const area = document.getElementById("printArea");
-  area.innerHTML = buildPrintHtml(cl, r1.data || [], r2.data || []);
+  area.innerHTML = buildPrintHtml(cl, data || []);
   await waitForImages(area);
   window.print();
 }
@@ -1171,13 +1239,12 @@ function renderNotes(c) {
     <div class="notes-wrap">
       <textarea id="f_notes" placeholder="Notes diverses, observations entre les séances, remarques particulières...">${currentClient.notes_initiales||''}</textarea>
     </div>
-    <button class="save-btn" onclick="saveNotes()">💾 Enregistrer</button>`;
+    <p class="autosave-note">✓ Les modifications sont enregistrées automatiquement.</p>`;
 }
 
 async function saveNotes() {
-  const notes = v('f_notes');
-  const { error } = await sb.from('clients').update({notes_initiales: notes}).eq('id', currentClient.id);
-  if (!error) { currentClient.notes_initiales = notes; showToast('Notes enregistrées ✓'); }
+  const target = currentClient;
+  await saveClientFields({notes_initiales: v("f_notes")}, target);
 }
 
 // ── MODALS ──
@@ -1444,7 +1511,7 @@ async function doLogin(e) {
   return false;
 }
 
-async function doLogout() { await sb.auth.signOut(); }
+async function doLogout() { await flushAutosave(); await sb.auth.signOut(); }
 
 // ── ACCUEIL ──
 function renderBooker() {
@@ -1454,6 +1521,7 @@ function renderBooker() {
 }
 
 function goHome() {
+  flushAutosave();
   currentClient = null; currentTab = 'infos';
   const cv = document.getElementById('clientView');
   cv.style.display = 'none'; cv.innerHTML = '';
