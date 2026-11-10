@@ -233,6 +233,21 @@ input[type="file"] { display: none; }
 .header-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 .header-actions .delete-btn { margin-left: 0; }
 
+/* ── SIGNATURES ── */
+.sig-box { border: 1px dashed #c9b49a; border-radius: var(--radius); min-height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: #fff; }
+.sig-box img { max-width: 100%; max-height: 64px; }
+.sig-empty { font-size: 12px; color: var(--text-muted); }
+.sig-btn { padding: 5px 12px; border: 1px solid var(--rose); background: transparent; color: var(--rose); border-radius: var(--radius); font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.sig-btn:hover { background: var(--rose-light); }
+.sig-overlay { position: fixed; inset: 0; background: rgba(43,29,32,0.55); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 1rem; overscroll-behavior: contain; }
+.sig-panel { background: #fff; border-radius: var(--radius-lg); padding: 1.1rem; width: 100%; max-width: 640px; }
+.sig-panel h3 { font-family: 'Cormorant Garamond', serif; font-size: 19px; font-weight: 500; color: var(--rose); }
+.sig-hint { font-size: 12px; color: var(--text-muted); margin: 2px 0 10px; }
+.sig-canvas { display: block; width: 100%; aspect-ratio: 3 / 1; border: 1px solid var(--border); border-radius: var(--radius); touch-action: none; cursor: crosshair; background: linear-gradient(to bottom, #fff 0, #fff calc(78% - 1px), #e6d9c9 calc(78% - 1px), #e6d9c9 78%, #fff 78%); }
+.sig-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+.sig-views { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; }
+.sig-view img { height: 46px; max-width: 180px; border: 1px solid var(--border); border-radius: 6px; background: #fff; padding: 2px; display: block; }
+
 /* ── IMPRESSION ── */
 #printArea { display: none; }
 .save-status { position: fixed; right: 1rem; bottom: 1rem; background: #fff; border: 1px solid var(--border); color: var(--text-muted); font-size: 12px; padding: 6px 12px; border-radius: 16px; z-index: 998; opacity: 0; transition: opacity 0.2s; pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
@@ -267,6 +282,8 @@ input[type="file"] { display: none; }
   .suivi-table { font-size: 8pt; width: 100%; }
   .suivi-table th, .suivi-table td { padding: 2px 6px; }
   .chart-card svg { max-height: 35mm; }
+  .p-sigs { display: flex; gap: 16px; margin-top: 3px; }
+  .p-sigs img { height: 11mm; display: block; }
   .p-rdvs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .p-rdvs .p-rdv { margin-bottom: 0; }
   .suivi-table th { background: #f3eadf; }
@@ -354,6 +371,7 @@ input[type="file"] { display: none; }
 <div id="modalContainer"></div>
 <div id="printArea"></div>
 <div id="saveStatus" class="save-status"></div>
+<div id="sigContainer"></div>
 <input type="file" id="photoInput" accept="image/*" multiple onchange="handlePhotoUpload(event)">
 
 <script>
@@ -391,7 +409,7 @@ function renderClientList(list) {
   el.innerHTML = list.map(c => `
     <div class="client-item ${currentClient?.id===c.id?'active':''}" onclick="selectClient('${c.id}')">
       <div class="avatar">${initials(c.nom,c.prenom)}</div>
-      <div><div class="client-name">${c.prenom} ${c.nom}</div><div class="client-sub">${c.telephone||c.email||'—'}</div></div>
+      <div><div class="client-name">${c.prenom} ${c.nom}</div></div>
     </div>`).join('');
 }
 
@@ -891,6 +909,7 @@ function rdvCard(r) {
       ${ib('Soins préconisés',r.soins_preconises)}
       ${ib('Ressenti client',r.ressenti_client)}
       ${ib('Observations',r.observations)}
+      ${sigBlock(r)}
       <div class="photos-section">
         <div class="info-block-label" style="margin-bottom:6px">Photos de ce rendez-vous</div>
         <div class="photos-grid" id="photogrid-${r.id}">
@@ -991,6 +1010,89 @@ function openLightbox(url) {
 }
 
 // ── SUIVI ──
+// ── SIGNATURES (à la main, tactile) ──
+let sigData = {praticienne: "", client: ""};
+let sigState = null;
+
+function renderSigBox(who) {
+  const el = document.getElementById("sigbox-" + who);
+  if (!el) return;
+  const src = sigData[who];
+  el.innerHTML = (src ? `<img src="${src}" alt="Signature">` : `<span class="sig-empty">Pas encore signé</span>`)
+    + `<button type="button" class="sig-btn" onclick="openSignature('${who}')">${src ? "Refaire la signature" : "✍ Signer"}</button>`;
+}
+function renderSigBoxes() { renderSigBox("praticienne"); renderSigBox("client"); }
+
+function sigBlock(r) {
+  if (!r.signature_praticienne && !r.signature_client) return "";
+  const one = (lab, src) => src ? `<div class="sig-view"><div class="info-block-label">${lab}</div><img src="${src}" alt="${lab}"></div>` : "";
+  return `<div class="sig-views">${one("Signature praticienne", r.signature_praticienne)}${one("Signature client", r.signature_client)}</div>`;
+}
+
+function openSignature(who) {
+  const title = who === "praticienne" ? "Signature de la praticienne" : "Signature du client";
+  document.getElementById("sigContainer").innerHTML = `<div class="sig-overlay"><div class="sig-panel">
+    <h3>${title}</h3><p class="sig-hint">Signer avec le doigt ou le stylet</p>
+    <canvas class="sig-canvas" id="sigCanvas"></canvas>
+    <div class="sig-actions">
+      <button type="button" class="btn-cancel" onclick="sigClear()">Effacer</button>
+      <button type="button" class="btn-cancel" onclick="sigClose()">Annuler</button>
+      <button type="button" class="save-btn" style="margin:0" onclick="sigValidate()">Valider la signature</button>
+    </div></div></div>`;
+  const cv = document.getElementById("sigCanvas");
+  sigState = {who: who, cv: cv, strokes: [], cur: null};
+  sigResize();
+  cv.addEventListener("pointerdown", sigDown);
+  cv.addEventListener("pointermove", sigMove);
+  cv.addEventListener("pointerup", sigUp);
+  cv.addEventListener("pointercancel", sigUp);
+}
+
+function sigDraw(ctx, strokes, w, h, lw) {
+  ctx.clearRect(0, 0, w, h);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.strokeStyle = "#2b1d20"; ctx.fillStyle = "#2b1d20"; ctx.lineWidth = lw;
+  strokes.forEach(st => {
+    if (st.length === 1) { ctx.beginPath(); ctx.arc(st[0][0] * w, st[0][1] * h, lw / 2, 0, Math.PI * 2); ctx.fill(); return; }
+    ctx.beginPath(); ctx.moveTo(st[0][0] * w, st[0][1] * h);
+    for (let i = 1; i < st.length - 1; i++) {
+      const mx = ((st[i][0] + st[i + 1][0]) / 2) * w, my = ((st[i][1] + st[i + 1][1]) / 2) * h;
+      ctx.quadraticCurveTo(st[i][0] * w, st[i][1] * h, mx, my);
+    }
+    const last = st[st.length - 1];
+    ctx.lineTo(last[0] * w, last[1] * h);
+    ctx.stroke();
+  });
+}
+function sigRedraw() {
+  const s = sigState; if (!s) return;
+  sigDraw(s.cv.getContext("2d"), s.strokes, s.cv.width, s.cv.height, Math.max(2, s.cv.width / 190));
+}
+function sigResize() {
+  if (!sigState) return;
+  const cv = sigState.cv, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.max(1, Math.round(cv.clientWidth * dpr));
+  cv.height = Math.round(cv.width / 3);
+  sigRedraw();
+}
+function sigPos(e) { const r = sigState.cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; }
+function sigDown(e) { if (!sigState) return; e.preventDefault(); sigState.cv.setPointerCapture(e.pointerId); sigState.cur = [sigPos(e)]; sigState.strokes.push(sigState.cur); sigRedraw(); }
+function sigMove(e) { if (!sigState || !sigState.cur) return; e.preventDefault(); sigState.cur.push(sigPos(e)); sigRedraw(); }
+function sigUp() { if (sigState) sigState.cur = null; }
+function sigClear() { if (!sigState) return; sigState.strokes = []; sigRedraw(); }
+function sigClose() { document.getElementById("sigContainer").innerHTML = ""; sigState = null; }
+function sigValidate() {
+  if (!sigState || !sigState.strokes.length) { alert("Veuillez signer avant de valider."); return; }
+  const out = document.createElement("canvas");
+  out.width = 600; out.height = 200;
+  sigDraw(out.getContext("2d"), sigState.strokes, 600, 200, 3.2);
+  const who = sigState.who;
+  sigData[who] = out.toDataURL("image/png");
+  sigClose();
+  renderSigBox(who);
+}
+window.addEventListener("resize", sigResize);
+
 // ── ENREGISTREMENT AUTOMATIQUE ──
 const AUTOSAVE_TABS = ["infos", "besoins", "alim", "sante", "notes"];
 let autosaveTimer = null, saveStatusTimer = null;
@@ -1177,13 +1279,19 @@ function pBlock(title, pairs) {
 }
 
 function pRdvHasText(r) {
-  return !!(r.commentaire_bras || r.commentaire_taille || r.commentaire_hanches || r.commentaire_cuisses || r.commentaire_mollets || r.soins_effectues || r.soins_preconises || r.ressenti_client || r.observations);
+  return !!(r.commentaire_bras || r.commentaire_taille || r.commentaire_hanches || r.commentaire_cuisses || r.commentaire_mollets || r.soins_effectues || r.soins_preconises || r.ressenti_client || r.observations || r.signature_praticienne || r.signature_client);
+}
+
+function pSigs(r) {
+  if (!r.signature_praticienne && !r.signature_client) return "";
+  const one = (lab, src) => src ? `<div><span class="pl">${lab}</span><img src="${src}" alt=""></div>` : "";
+  return `<div class="p-sigs">${one("Praticienne", r.signature_praticienne)}${one("Client", r.signature_client)}</div>`;
 }
 
 function pRdv(r) {
   const txt = (l, v) => v ? `<div class="pf full"><span class="pl">${l}</span><span class="pv">${esc(v)}</span></div>` : "";
   return `<div class="p-rdv"><h4>${fmtLong(r.date_rdv)}${r.praticienne ? "<span> — " + esc(r.praticienne) + "</span>" : ""}</h4>
-    <div class="pgrid">${txt("Soins effectués", r.soins_effectues)}${txt("Soins préconisés", r.soins_preconises)}${txt("Ressenti client", r.ressenti_client)}${txt("Observations", r.observations)}${txt("Commentaires bras", r.commentaire_bras)}${txt("Commentaires taille", r.commentaire_taille)}${txt("Commentaires hanches", r.commentaire_hanches)}${txt("Commentaires cuisses", r.commentaire_cuisses)}${txt("Commentaires mollets / écartement", r.commentaire_mollets)}</div></div>`;
+    <div class="pgrid">${txt("Soins effectués", r.soins_effectues)}${txt("Soins préconisés", r.soins_preconises)}${txt("Ressenti client", r.ressenti_client)}${txt("Observations", r.observations)}${txt("Commentaires bras", r.commentaire_bras)}${txt("Commentaires taille", r.commentaire_taille)}${txt("Commentaires hanches", r.commentaire_hanches)}${txt("Commentaires cuisses", r.commentaire_cuisses)}${txt("Commentaires mollets / écartement", r.commentaire_mollets)}</div>${pSigs(r)}</div>`;
 }
 
 function buildPrintHtml(cl, rdvs) {
@@ -1283,6 +1391,7 @@ async function createClient() {
 }
 
 function openNewRdvModal() {
+  sigData = {praticienne: "", client: ""};
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('modalContainer').innerHTML = `
     <div class="overlay" onclick="closeOverlay(event)">
@@ -1319,6 +1428,11 @@ function openNewRdvModal() {
             <div class="field full"><label>Ressenti client</label><textarea id="nr_ressenti"></textarea></div>
             <div class="field full"><label>Observations</label><textarea id="nr_obs"></textarea></div>
           </div>
+          <p class="section-label" style="margin-top:1.1rem">Signatures</p>
+          <div class="form-grid">
+            <div class="field"><label>Signature de la praticienne</label><div class="sig-box" id="sigbox-praticienne"></div></div>
+            <div class="field"><label>Signature du client</label><div class="sig-box" id="sigbox-client"></div></div>
+          </div>
         </div>
         <div class="modal-foot">
           <button class="btn-cancel" onclick="closeModal()">Annuler</button>
@@ -1326,6 +1440,7 @@ function openNewRdvModal() {
         </div>
       </div>
     </div>`;
+  renderSigBoxes();
 }
 
 async function createRdv() {
@@ -1342,6 +1457,7 @@ async function createRdv() {
     ecartement_jambes: v('nr_ecart')||null, commentaire_mollets: v('nr_mollets_comment'),
     soins_effectues: v('nr_soins_eff'), soins_preconises: v('nr_soins_preco'),
     ressenti_client: v('nr_ressenti'), observations: v('nr_obs'),
+    signature_praticienne: sigData.praticienne || null, signature_client: sigData.client || null,
   });
   if (!error) {
     closeModal();
@@ -1354,6 +1470,7 @@ async function createRdv() {
 async function openEditRdvModal(rdvId) {
   const { data: r, error } = await sb.from('rendez_vous').select('*').eq('id', rdvId).single();
   if (error || !r) { alert('Impossible de charger ce rendez-vous'); return; }
+  sigData = {praticienne: r.signature_praticienne || "", client: r.signature_client || ""};
   document.getElementById('modalContainer').innerHTML = `
     <div class="overlay" onclick="closeOverlay(event)">
       <div class="modal">
@@ -1389,6 +1506,11 @@ async function openEditRdvModal(rdvId) {
             <div class="field full"><label>Ressenti client</label><textarea id="er_ressenti">${r.ressenti_client||''}</textarea></div>
             <div class="field full"><label>Observations</label><textarea id="er_obs">${r.observations||''}</textarea></div>
           </div>
+          <p class="section-label" style="margin-top:1.1rem">Signatures</p>
+          <div class="form-grid">
+            <div class="field"><label>Signature de la praticienne</label><div class="sig-box" id="sigbox-praticienne"></div></div>
+            <div class="field"><label>Signature du client</label><div class="sig-box" id="sigbox-client"></div></div>
+          </div>
         </div>
         <div class="modal-foot">
           <button class="btn-cancel" onclick="closeModal()">Annuler</button>
@@ -1396,6 +1518,7 @@ async function openEditRdvModal(rdvId) {
         </div>
       </div>
     </div>`;
+  renderSigBoxes();
 }
 
 async function saveRdv(rdvId) {
@@ -1423,6 +1546,7 @@ async function saveRdv(rdvId) {
     soins_preconises: document.getElementById('er_soins_preco').value,
     ressenti_client: document.getElementById('er_ressenti').value,
     observations: document.getElementById('er_obs').value,
+    signature_praticienne: sigData.praticienne || null, signature_client: sigData.client || null,
   }).eq('id', rdvId);
   if (!error) { closeModal(); await renderTab(); showToast('Rendez-vous modifié ✓'); }
   else alert('Erreur : ' + error.message);
